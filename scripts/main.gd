@@ -13,6 +13,9 @@ var game_over := false
 var checkpoint_positions: Array[Vector3] = []
 var active_checkpoint := 0
 var checkpoint_label: Label
+var record_label: Label
+var climb_progress: ProgressBar
+var pause_overlay: Control
 var moving_obstacles: Array[AnimatableBody3D] = []
 var obstacle_clock := 0.0
 var last_player_feedback := ""
@@ -492,69 +495,231 @@ func _build_camera() -> void:
 
 func _build_hud() -> void:
     var hud := CanvasLayer.new()
+    hud.name = "GameHUD"
+    hud.process_mode = Node.PROCESS_MODE_ALWAYS
     add_child(hud)
 
-    var panel := PanelContainer.new()
-    panel.position = Vector2(18, 16)
-    panel.custom_minimum_size = Vector2(390, 78)
-    hud.add_child(panel)
-    var vbox := VBoxContainer.new()
-    panel.add_child(vbox)
+    # Top-left climbing telemetry: height, personal best and route progress.
+    var info_panel := PanelContainer.new()
+    info_panel.position = Vector2(22, 18)
+    info_panel.custom_minimum_size = Vector2(330, 116)
+    info_panel.add_theme_stylebox_override("panel", _hud_panel_style(Color(0.035, 0.055, 0.075, 0.92)))
+    hud.add_child(info_panel)
+
+    var info := VBoxContainer.new()
+    info.add_theme_constant_override("separation", 3)
+    info_panel.add_child(info)
+
+    var title := Label.new()
+    title.text = "CLIMB MASTER   /   ВЫСОТА"
+    title.add_theme_font_size_override("font_size", 13)
+    title.add_theme_color_override("font_color", Color(0.52, 0.82, 0.83))
+    info.add_child(title)
 
     height_label = Label.new()
-    height_label.text = "ВЫСОТА: 0 м"
-    height_label.add_theme_font_size_override("font_size", 19)
-    vbox.add_child(height_label)
+    height_label.text = "0 м"
+    height_label.add_theme_font_size_override("font_size", 34)
+    height_label.add_theme_color_override("font_color", Color(1.0, 0.91, 0.72))
+    info.add_child(height_label)
 
-    status_label = Label.new()
-    status_label.text = "Веди серп пальцем • цепляйся и отталкивайся"
-    status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-    vbox.add_child(status_label)
+    record_label = Label.new()
+    record_label.text = "РЕКОРД  0 м"
+    record_label.add_theme_font_size_override("font_size", 12)
+    record_label.add_theme_color_override("font_color", Color(0.70, 0.76, 0.81))
+    info.add_child(record_label)
 
-    # Only utility controls remain on screen. Movement is entirely finger-driven.
+    climb_progress = ProgressBar.new()
+    climb_progress.custom_minimum_size = Vector2(0, 8)
+    climb_progress.min_value = 0
+    climb_progress.max_value = 30
+    climb_progress.value = 0
+    climb_progress.show_percentage = false
+    climb_progress.add_theme_stylebox_override("background", _hud_panel_style(Color(0.12, 0.17, 0.20)))
+    var progress_fill := StyleBoxFlat.new()
+    progress_fill.bg_color = Color(0.20, 0.82, 0.70)
+    progress_fill.corner_radius_top_left = 5
+    progress_fill.corner_radius_top_right = 5
+    progress_fill.corner_radius_bottom_left = 5
+    progress_fill.corner_radius_bottom_right = 5
+    climb_progress.add_theme_stylebox_override("fill", progress_fill)
+    info.add_child(climb_progress)
+
+    # Compact checkpoint badge.
+    checkpoint_label = Label.new()
+    checkpoint_label.text = "◆  СТАРТ  •  КП 0"
+    checkpoint_label.position = Vector2(22, 148)
+    checkpoint_label.add_theme_font_size_override("font_size", 14)
+    checkpoint_label.add_theme_color_override("font_color", Color(0.72, 0.94, 0.86))
+    hud.add_child(checkpoint_label)
+
+    # Top-right controls.
     var controls := HBoxContainer.new()
     controls.anchor_left = 1.0
     controls.anchor_right = 1.0
-    controls.anchor_top = 0.0
-    controls.anchor_bottom = 0.0
-    controls.offset_left = -174
-    controls.offset_right = -18
-    controls.offset_top = 18
-    controls.offset_bottom = 78
-    controls.alignment = BoxContainer.ALIGNMENT_END
+    controls.offset_left = -154
+    controls.offset_right = -22
+    controls.offset_top = 20
+    controls.offset_bottom = 82
     controls.add_theme_constant_override("separation", 10)
     hud.add_child(controls)
 
     pause_button = Button.new()
     pause_button.text = "Ⅱ"
     pause_button.tooltip_text = "Пауза"
-    pause_button.custom_minimum_size = Vector2(70, 58)
-    pause_button.add_theme_font_size_override("font_size", 26)
+    pause_button.custom_minimum_size = Vector2(62, 58)
+    pause_button.add_theme_font_size_override("font_size", 24)
+    _style_hud_button(pause_button, Color(0.08, 0.15, 0.18, 0.96))
     pause_button.process_mode = Node.PROCESS_MODE_ALWAYS
     pause_button.pressed.connect(_toggle_pause)
     controls.add_child(pause_button)
 
     var reset_button := Button.new()
     reset_button.text = "↻"
-    reset_button.tooltip_text = "Перезапуск"
-    reset_button.custom_minimum_size = Vector2(70, 58)
+    reset_button.tooltip_text = "Вернуться к контрольной точке"
+    reset_button.custom_minimum_size = Vector2(62, 58)
+    reset_button.add_theme_font_size_override("font_size", 27)
+    _style_hud_button(reset_button, Color(0.20, 0.11, 0.09, 0.96))
     reset_button.process_mode = Node.PROCESS_MODE_ALWAYS
-    reset_button.add_theme_font_size_override("font_size", 28)
     reset_button.pressed.connect(_reset_player)
     controls.add_child(reset_button)
 
+    # Bottom instruction strip stays clear of the character and touch area.
+    var hint_panel := PanelContainer.new()
+    hint_panel.anchor_left = 0.5
+    hint_panel.anchor_right = 0.5
+    hint_panel.anchor_top = 1.0
+    hint_panel.anchor_bottom = 1.0
+    hint_panel.offset_left = -250
+    hint_panel.offset_right = 250
+    hint_panel.offset_top = -66
+    hint_panel.offset_bottom = -18
+    hint_panel.add_theme_stylebox_override("panel", _hud_panel_style(Color(0.035, 0.055, 0.075, 0.82)))
+    hud.add_child(hint_panel)
+
+    status_label = Label.new()
+    status_label.text = "КАСАЙСЯ ЭКРАНА И ВЕДИ СЕРП  •  ЦЕПЛЯЙСЯ ЗА КРАЯ"
+    status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+    status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    status_label.add_theme_font_size_override("font_size", 14)
+    status_label.add_theme_color_override("font_color", Color(0.88, 0.93, 0.92))
+    hint_panel.add_child(status_label)
+
     restart_button = Button.new()
-    restart_button.text = "Начать заново"
-    restart_button.position = Vector2(18, 112)
+    restart_button.text = "↻  ВЕРНУТЬСЯ К КОНТРОЛЬНОЙ ТОЧКЕ"
+    restart_button.anchor_left = 0.5
+    restart_button.anchor_right = 0.5
+    restart_button.anchor_top = 0.5
+    restart_button.anchor_bottom = 0.5
+    restart_button.offset_left = -190
+    restart_button.offset_right = 190
+    restart_button.offset_top = 115
+    restart_button.offset_bottom = 165
     restart_button.visible = false
     restart_button.process_mode = Node.PROCESS_MODE_ALWAYS
+    _style_hud_button(restart_button, Color(0.55, 0.20, 0.10, 0.98))
     restart_button.pressed.connect(_reset_player)
     hud.add_child(restart_button)
+
+    # Pause screen with a clear resume action.
+    pause_overlay = Control.new()
+    pause_overlay.name = "PauseOverlay"
+    pause_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    pause_overlay.visible = false
+    pause_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+    pause_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
+    hud.add_child(pause_overlay)
+
+    var dim := ColorRect.new()
+    dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    dim.color = Color(0.008, 0.018, 0.028, 0.78)
+    pause_overlay.add_child(dim)
+
+    var pause_card := PanelContainer.new()
+    pause_card.anchor_left = 0.5
+    pause_card.anchor_right = 0.5
+    pause_card.anchor_top = 0.5
+    pause_card.anchor_bottom = 0.5
+    pause_card.offset_left = -190
+    pause_card.offset_right = 190
+    pause_card.offset_top = -145
+    pause_card.offset_bottom = 145
+    pause_card.add_theme_stylebox_override("panel", _hud_panel_style(Color(0.045, 0.075, 0.09, 0.99)))
+    pause_overlay.add_child(pause_card)
+
+    var pause_content := VBoxContainer.new()
+    pause_content.alignment = BoxContainer.ALIGNMENT_CENTER
+    pause_content.add_theme_constant_override("separation", 15)
+    pause_card.add_child(pause_content)
+
+    var pause_title := Label.new()
+    pause_title.text = "ПЕРЕДЫШКА"
+    pause_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    pause_title.add_theme_font_size_override("font_size", 28)
+    pause_title.add_theme_color_override("font_color", Color(1.0, 0.84, 0.60))
+    pause_content.add_child(pause_title)
+
+    var pause_subtitle := Label.new()
+    pause_subtitle.text = "Подумай над следующим движением"
+    pause_subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    pause_subtitle.add_theme_font_size_override("font_size", 14)
+    pause_subtitle.add_theme_color_override("font_color", Color(0.72, 0.82, 0.84))
+    pause_content.add_child(pause_subtitle)
+
+    var resume_button := Button.new()
+    resume_button.text = "ПРОДОЛЖИТЬ ПОДЪЁМ"
+    resume_button.custom_minimum_size = Vector2(300, 54)
+    _style_hud_button(resume_button, Color(0.08, 0.42, 0.36, 1.0))
+    resume_button.pressed.connect(_toggle_pause)
+    pause_content.add_child(resume_button)
+
+    var menu_reset := Button.new()
+    menu_reset.text = "К КОНТРОЛЬНОЙ ТОЧКЕ"
+    menu_reset.custom_minimum_size = Vector2(300, 48)
+    _style_hud_button(menu_reset, Color(0.22, 0.14, 0.11, 1.0))
+    menu_reset.pressed.connect(_reset_player)
+    pause_content.add_child(menu_reset)
+
+
+func _hud_panel_style(color: Color) -> StyleBoxFlat:
+    var style := StyleBoxFlat.new()
+    style.bg_color = color
+    style.border_color = Color(0.28, 0.58, 0.58, 0.72)
+    style.set_border_width_all(1)
+    style.set_corner_radius_all(14)
+    style.content_margin_left = 16
+    style.content_margin_right = 16
+    style.content_margin_top = 10
+    style.content_margin_bottom = 10
+    return style
+
+
+func _style_hud_button(button: Button, color: Color) -> void:
+    var normal := StyleBoxFlat.new()
+    normal.bg_color = color
+    normal.border_color = Color(0.42, 0.76, 0.72, 0.8)
+    normal.set_border_width_all(1)
+    normal.set_corner_radius_all(12)
+    normal.content_margin_left = 12
+    normal.content_margin_right = 12
+    var hover := normal.duplicate() as StyleBoxFlat
+    hover.bg_color = color.lightened(0.16)
+    var pressed := normal.duplicate() as StyleBoxFlat
+    pressed.bg_color = color.darkened(0.18)
+    button.add_theme_stylebox_override("normal", normal)
+    button.add_theme_stylebox_override("hover", hover)
+    button.add_theme_stylebox_override("pressed", pressed)
+    button.add_theme_color_override("font_color", Color(0.96, 0.98, 0.95))
+    button.add_theme_color_override("font_hover_color", Color.WHITE)
+    button.add_theme_color_override("font_pressed_color", Color.WHITE)
+
 
 func _toggle_pause() -> void:
     get_tree().paused = not get_tree().paused
     if is_instance_valid(pause_button):
         pause_button.text = "▶" if get_tree().paused else "Ⅱ"
+    if is_instance_valid(pause_overlay):
+        pause_overlay.visible = get_tree().paused
 
 func _process(delta: float) -> void:
     obstacle_clock += delta
@@ -570,7 +735,9 @@ func _process(delta: float) -> void:
         last_player_feedback = player.hook_feedback
         status_label.text = last_player_feedback
     peak_y = maxf(peak_y, h)
-    height_label.text = "ВЫСОТА: %d м  |  РЕКОРД: %d м" % [int(h), int(peak_y)]
+    height_label.text = "%d м" % int(h)
+    record_label.text = "РЕКОРД  %d м" % int(peak_y)
+    climb_progress.value = clampf(h, 0.0, 30.0)
     # Fixed, slightly elevated chase camera: it follows the climber but does not orbit.
     # Fixed side-on camera: no orbit, depth travel, or perspective drift.
     var target_camera := Vector3(player.global_position.x, player.global_position.y + 2.25, 18.0)
@@ -585,12 +752,15 @@ func _check_checkpoint() -> void:
     for i in range(active_checkpoint, checkpoint_positions.size()):
         if player.global_position.distance_to(checkpoint_positions[i]) < 1.45:
             active_checkpoint = i + 1
-            status_label.text = "Контрольная точка %d сохранена!" % active_checkpoint
+            status_label.text = "КОНТРОЛЬНАЯ ТОЧКА %d СОХРАНЕНА!" % active_checkpoint
+            checkpoint_label.text = "◆  КОНТРОЛЬНАЯ ТОЧКА  •  %d" % active_checkpoint
 
 func _reset_player() -> void:
     get_tree().paused = false
     if is_instance_valid(pause_button):
         pause_button.text = "Ⅱ"
+    if is_instance_valid(pause_overlay):
+        pause_overlay.visible = false
     var respawn := Vector3(0, 1.0, 0)
     if active_checkpoint > 0:
         respawn = checkpoint_positions[active_checkpoint - 1] + Vector3(0, 0.65, 0)
@@ -600,4 +770,4 @@ func _reset_player() -> void:
     player.reset_hammer()
     game_over = false
     restart_button.visible = false
-    status_label.text = "Проводи пальцем по экрану, направляй серп и отталкивайся от камней."
+    status_label.text = "КАСАЙСЯ ЭКРАНА И ВЕДИ СЕРП  •  ЦЕПЛЯЙСЯ ЗА КРАЯ"
