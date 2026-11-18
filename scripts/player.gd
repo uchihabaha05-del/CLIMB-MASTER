@@ -12,7 +12,6 @@ const MAX_HOOK_ACCEL := 42.0
 const PUMP_ACCEL := 13.0
 const PLAY_PLANE_Z := 0.0
 
-var mobile := {"left": false, "right": false}
 var hammer_pivot: Node3D
 var hammer_head: Node3D
 var scythe_contact_valid := false
@@ -22,15 +21,10 @@ var scythe_probe := SphereShape3D.new()
 var aim_angle := -0.72
 var aim_elevation := 0.0
 var dragging := false
-var release_tap := false
-var anchored := false
-var anchor_point := Vector3.ZERO
-var rope_length := 0.0
-var previous_hook_vector := Vector3.ZERO
-var hook_cooldown := 0.0
+var pointer_position := Vector2.ZERO
 var imported_skeleton: Skeleton3D
 var posed_bones: Array[int] = []
-var hook_feedback := "Проведи пальцем, чтобы навести серп; при касании он зацепится."
+var hook_feedback := "Веди серп пальцем по экрану. Упирайся лезвием в препятствия, чтобы отталкиваться."
 
 func _ready() -> void:
     global_position.z = PLAY_PLANE_Z
@@ -369,62 +363,62 @@ func _try_lock_scythe_angle(previous_angle: float, next_angle: float) -> bool:
     scythe_contact_collider = null
     return true
 
-func set_mobile_input(key: String, pressed: bool) -> void:
-    if mobile.has(key):
-        mobile[key] = pressed
-
 func reset_hammer() -> void:
     aim_angle = -0.72
     aim_elevation = 0.0
-    anchored = false
     dragging = false
     scythe_contact_valid = false
     scythe_contact_collider = null
     hammer_pivot.rotation = Vector3.ZERO
-    hook_cooldown = 0.0
     _update_hammer_pose()
 
 func _unhandled_input(event: InputEvent) -> void:
+    # One-finger drag (or left mouse drag on desktop) directly aims the scythe
+    # around the climber. Releasing the finger does not trigger an artificial hook.
     if event is InputEventScreenTouch:
         if event.pressed:
-            if anchored:
-                _release_hook()
-                release_tap = true
-                dragging = false
-            else:
-                dragging = true
+            dragging = true
+            pointer_position = event.position
+            _aim_from_pointer(pointer_position)
         else:
-            if release_tap:
-                release_tap = false
-            elif dragging:
-                _try_hook()
             dragging = false
     elif event is InputEventScreenDrag and dragging:
-        _aim_from_drag(event.relative)
+        pointer_position = event.position
+        _aim_from_pointer(pointer_position)
     elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-        if event.pressed:
-            if anchored:
-                _release_hook()
-                release_tap = true
-                dragging = false
-            else:
-                dragging = true
-        else:
-            if release_tap:
-                release_tap = false
-            elif dragging:
-                _try_hook()
-            dragging = false
+        dragging = event.pressed
+        if dragging:
+            pointer_position = event.position
+            _aim_from_pointer(pointer_position)
     elif event is InputEventMouseMotion and dragging:
-        _aim_from_drag(event.relative)
+        pointer_position = event.position
+        _aim_from_pointer(pointer_position)
 
-func _aim_from_drag(relative: Vector2) -> void:
-    # Both screen axes rotate the hammer inside the fixed side-view XY plane.
+func _aim_from_pointer(screen_position: Vector2) -> void:
+    var active_camera := get_viewport().get_camera_3d()
+    if active_camera == null:
+        return
+    var pivot_screen := active_camera.unproject_position(hammer_pivot.global_position)
+    var pointer_vector := screen_position - pivot_screen
+    if pointer_vector.length_squared() < 36.0:
+        return
+
+    # Screen coordinates point down; convert to the game's fixed XY side plane.
+    var proposed_angle := atan2(-pointer_vector.y, pointer_vector.x) - PI * 0.5
+    proposed_angle = clampf(proposed_angle, -PI * 0.96, PI * 0.96)
     var previous_angle := aim_angle
-    var proposed_angle := clampf(aim_angle + (relative.x - relative.y) * 0.009, -PI * 0.92, PI * 0.92)
     if _try_lock_scythe_angle(previous_angle, proposed_angle):
         aim_angle = proposed_angle
-    # If the blade would cross a solid object, keep the last safe angle.
+    else:
+        # The blade cannot pass through a solid surface. The blocked swing
+        # transfers a reaction impulse to the cauldron, like a physical tool.
+        var radius := scythe_contact_point - hammer_pivot.global_position
+        var tangent := Vector3(-radius.y, radius.x, 0.0).normalized()
+        var sweep_sign := signf(wrapf(proposed_angle - previous_angle, -PI, PI))
+        var push_strength := clampf(absf(wrapf(proposed_angle - previous_angle, -PI, PI)) * 18.0, 0.0, 7.5)
+        if tangent.length_squared() > 0.01 and push_strength > 0.0:
+            velocity += -tangent * sweep_sign * push_strength
+        hook_feedback = "Серп упёрся в поверхность — используй упор, чтобы оттолкнуться."
     aim_elevation = 0.0
     _update_hammer_pose()
 
@@ -433,102 +427,21 @@ func _update_hammer_pose() -> void:
         hammer_pivot.rotation = Vector3(0.0, 0.0, aim_angle)
 
 func _physics_process(delta: float) -> void:
-    hook_cooldown = maxf(0.0, hook_cooldown - delta)
-
-    var horizontal := Input.get_axis("ui_left", "ui_right")
-    if mobile["left"]:
-        horizontal = -1.0
-    if mobile["right"]:
-        horizontal = 1.0
-
-    var steer := AIR_STEER if not is_on_floor() else MOVE_ACCEL
-    velocity.x = move_toward(velocity.x, horizontal * MAX_HORIZONTAL_SPEED, steer * delta)
-
     if not is_on_floor():
         velocity.y -= GRAVITY * delta
 
-    if anchored:
-        _apply_hook_physics(delta, horizontal)
-
-    # Lock all character movement to the original side-view plane (X/Y).
+    # The player has no independent walk or jump controls: all movement comes
+    # from gravity and physical reactions when the scythe pushes against terrain.
     velocity.z = 0.0
     move_and_slide()
     velocity.z = 0.0
     global_position.z = PLAY_PLANE_Z
 
-    # A hook remains attached to the world point, never to the moving player.
-    if anchored and global_position.distance_to(anchor_point) > SCYTHE_REACH * 2.6:
-        _release_hook()
     for collision_index in range(get_slide_collision_count()):
         var collision := get_slide_collision(collision_index)
         var collider := collision.get_collider()
         if collider is Node and (collider as Node).is_in_group("climb_hazard"):
-            _release_hook()
-            velocity += collision.get_normal() * 5.5 + Vector3.UP * 3.0
-            hook_feedback = "Препятствие сбило тебя! Ищи безопасный момент."
+            velocity += collision.get_normal() * 2.0
+            hook_feedback = "Опасное препятствие! Найди другой упор."
             break
 
-func _apply_hook_physics(delta: float, horizontal: float) -> void:
-    var offset := anchor_point - global_position
-    var distance := offset.length()
-    if distance < 0.001:
-        return
-
-    var direction := offset / distance
-    var stretch := distance - rope_length
-    var radial_speed := velocity.dot(direction)
-    var spring_accel := maxf(0.0, stretch) * HOOK_SPRING - radial_speed * HOOK_DAMPING
-    spring_accel = clampf(spring_accel, 0.0, MAX_HOOK_ACCEL)
-    velocity += direction * spring_accel * delta
-
-    # Tangential input pumps the swing instead of applying a generic jump.
-    var tangent := Vector3(-direction.y, direction.x, 0.0).normalized()
-    if mobile["left"]:
-        velocity += tangent * PUMP_ACCEL * delta
-    elif mobile["right"]:
-        velocity -= tangent * PUMP_ACCEL * delta
-
-func _try_hook() -> void:
-    if hook_cooldown > 0.0:
-        return
-    _update_hammer_pose()
-
-    # Check the entire current blade before falling back to a single ray.
-    var hit: Dictionary = {}
-    if not scythe_contact_valid:
-        var current_contact := _query_scythe_collision(aim_angle)
-        if not current_contact.is_empty():
-            scythe_contact_valid = true
-            scythe_contact_point = current_contact.get("position", hammer_head.global_position)
-            scythe_contact_point.z = PLAY_PLANE_Z
-            scythe_contact_collider = current_contact.get("collider")
-    # If the blade touched a solid object while aiming, hook that exact contact.
-    if scythe_contact_valid:
-        hit = {"position": scythe_contact_point, "collider": scythe_contact_collider}
-    else:
-        var origin := hammer_pivot.global_position
-        var direction := (hammer_pivot.global_transform.basis * Vector3.UP).normalized()
-        var space := get_world_3d().direct_space_state
-        var query := PhysicsRayQueryParameters3D.create(origin, origin + direction * SCYTHE_REACH)
-        query.exclude = [get_rid()]
-        query.collide_with_areas = false
-        hit = space.intersect_ray(query)
-
-    if not hit.is_empty():
-        anchor_point = hit.get("position", hammer_head.global_position)
-        anchor_point.z = PLAY_PLANE_Z
-        var actual_distance := global_position.distance_to(anchor_point)
-        rope_length = maxf(1.0, actual_distance - 0.55)
-        anchored = true
-        hook_cooldown = 0.22
-        hook_feedback = "Серп зацепился! Нажми, чтобы отпустить."
-    else:
-        anchored = false
-        hook_feedback = "Серп не зацепился. Подведи лезвие к камню или платформе."
-
-func _release_hook() -> void:
-    anchored = false
-    hook_cooldown = 0.12
-    scythe_contact_valid = false
-    scythe_contact_collider = null
-    hook_feedback = "Серп отпущен. Наведи лезвие и отпусти палец для нового зацепа."
