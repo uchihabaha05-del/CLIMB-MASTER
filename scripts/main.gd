@@ -6,6 +6,7 @@ var camera: Camera3D
 var height_label: Label
 var status_label: Label
 var restart_button: Button
+var pause_button: Button
 var start_y := 0.0
 var peak_y := 0.0
 var game_over := false
@@ -435,7 +436,7 @@ func _build_hud() -> void:
 
     var panel := PanelContainer.new()
     panel.position = Vector2(18, 16)
-    panel.custom_minimum_size = Vector2(300, 82)
+    panel.custom_minimum_size = Vector2(320, 78)
     hud.add_child(panel)
     var vbox := VBoxContainer.new()
     panel.add_child(vbox)
@@ -446,33 +447,40 @@ func _build_hud() -> void:
     vbox.add_child(height_label)
 
     status_label = Label.new()
-    status_label.text = "Веди серп пальцем. При касании препятствия он остановится; отпусти для зацепа."
+    status_label.text = "Проводи пальцем по экрану, чтобы направлять серп. Упирайся в камни и отталкивайся."
+    status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     vbox.add_child(status_label)
 
+    # Only utility controls remain on screen. Movement is entirely finger-driven.
     var controls := HBoxContainer.new()
-    controls.anchor_left = 0.5
-    controls.anchor_right = 0.5
-    controls.anchor_top = 1.0
-    controls.anchor_bottom = 1.0
-    controls.offset_left = -170
-    controls.offset_right = 170
-    controls.offset_top = -92
-    controls.offset_bottom = -18
-    controls.alignment = BoxContainer.ALIGNMENT_CENTER
-    controls.add_theme_constant_override("separation", 18)
+    controls.anchor_left = 1.0
+    controls.anchor_right = 1.0
+    controls.anchor_top = 0.0
+    controls.anchor_bottom = 0.0
+    controls.offset_left = -174
+    controls.offset_right = -18
+    controls.offset_top = 18
+    controls.offset_bottom = 78
+    controls.alignment = BoxContainer.ALIGNMENT_END
+    controls.add_theme_constant_override("separation", 10)
     hud.add_child(controls)
 
-    for item in [["◀", "left"], ["▶", "right"], ["↻", "reset"]]:
-        var button := Button.new()
-        button.text = item[0]
-        button.custom_minimum_size = Vector2(72, 66)
-        button.add_theme_font_size_override("font_size", 27)
-        controls.add_child(button)
-        if item[1] == "reset":
-            button.pressed.connect(_reset_player)
-        else:
-            button.button_down.connect(func(): player.set_mobile_input(item[1], true))
-            button.button_up.connect(func(): player.set_mobile_input(item[1], false))
+    pause_button = Button.new()
+    pause_button.text = "Ⅱ"
+    pause_button.tooltip_text = "Пауза"
+    pause_button.custom_minimum_size = Vector2(70, 58)
+    pause_button.add_theme_font_size_override("font_size", 26)
+    pause_button.process_mode = Node.PROCESS_MODE_ALWAYS
+    pause_button.pressed.connect(_toggle_pause)
+    controls.add_child(pause_button)
+
+    var reset_button := Button.new()
+    reset_button.text = "↻"
+    reset_button.tooltip_text = "Перезапуск"
+    reset_button.custom_minimum_size = Vector2(70, 58)
+    reset_button.add_theme_font_size_override("font_size", 28)
+    reset_button.pressed.connect(_reset_player)
+    controls.add_child(reset_button)
 
     restart_button = Button.new()
     restart_button.text = "Начать заново"
@@ -480,6 +488,11 @@ func _build_hud() -> void:
     restart_button.visible = false
     restart_button.pressed.connect(_reset_player)
     hud.add_child(restart_button)
+
+func _toggle_pause() -> void:
+    get_tree().paused = not get_tree().paused
+    if is_instance_valid(pause_button):
+        pause_button.text = "▶" if get_tree().paused else "Ⅱ"
 
 func _process(delta: float) -> void:
     obstacle_clock += delta
@@ -513,6 +526,9 @@ func _check_checkpoint() -> void:
             status_label.text = "Контрольная точка %d сохранена!" % active_checkpoint
 
 func _reset_player() -> void:
+    get_tree().paused = false
+    if is_instance_valid(pause_button):
+        pause_button.text = "Ⅱ"
     var respawn := Vector3(0, 1.0, 0)
     if active_checkpoint > 0:
         respawn = checkpoint_positions[active_checkpoint - 1] + Vector3(0, 0.65, 0)
@@ -522,4 +538,4 @@ func _reset_player() -> void:
     player.reset_hammer()
     game_over = false
     restart_button.visible = false
-    status_label.text = "Веди серп пальцем. При касании препятствия он остановится; отпусти для зацепа."
+    status_label.text = "Проводи пальцем по экрану, чтобы направлять серп. Упирайся в камни и отталкивайся."
