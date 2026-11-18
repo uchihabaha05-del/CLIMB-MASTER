@@ -58,7 +58,7 @@ jobs:
         run: |
           set -o pipefail
           godot --headless --path . --quit-after 120 2>&1 | tee /tmp/climb-master-smoke.log
-          if grep -E "SCRIPT ERROR:|Parse Error:|ERROR: Failed to load script|ERROR: Resource file not found|ERROR: Can.t open file|Non-existing or invalid boot splash" /tmp/climb-master-smoke.log; then
+          if grep -E "SCRIPT ERROR:|Parse Error:|ERROR: Failed to load script|ERROR: Resource file not found|ERROR: Can.t open file|ERROR: No loader found|ERROR: Failed loading resource|Non-existing or invalid boot splash" /tmp/climb-master-smoke.log; then
             echo "Godot smoke test found a scene, script or resource loading error."
             exit 1
           fi
