@@ -15,6 +15,7 @@ var checkpoint_label: Label
 
 func _ready() -> void:
     _build_world()
+    _build_industrial_structures()
     _build_checkpoints()
     _build_player()
     _build_camera()
@@ -148,6 +149,48 @@ func _build_world() -> void:
         rock_body.position = Vector3(randf_range(-5.5, 5.5), randf_range(1.0, 19.0), randf_range(-3.2, -1.8))
         rock_body.rotation.z = randf_range(-0.2, 0.2)
         add_child(rock_body)
+
+
+func _build_industrial_structures() -> void:
+    # Weathered steel frames make the climb feel like an abandoned quarry.
+    var steel := StandardMaterial3D.new()
+    steel.albedo_color = Color(0.16, 0.21, 0.24)
+    steel.metallic = 0.88
+    steel.roughness = 0.34
+    var rust := StandardMaterial3D.new()
+    rust.albedo_color = Color(0.34, 0.19, 0.11)
+    rust.metallic = 0.62
+    rust.roughness = 0.78
+
+    for side in [-1.0, 1.0]:
+        for level in range(3):
+            var frame := Node3D.new()
+            frame.position = Vector3(side * 4.8, 2.0 + float(level) * 6.0, -0.2)
+            add_child(frame)
+            _add_steel_beam(frame, Vector3(-0.85, -2.6, 0), Vector3(-0.85, 2.6, 0), 0.13, steel)
+            _add_steel_beam(frame, Vector3(0.85, -2.6, 0), Vector3(0.85, 2.6, 0), 0.13, steel)
+            _add_steel_beam(frame, Vector3(-0.85, 2.35, 0), Vector3(0.85, 2.35, 0), 0.16, rust)
+            _add_steel_beam(frame, Vector3(-0.85, -2.3, 0), Vector3(0.85, 2.2, 0), 0.075, steel)
+            _add_steel_beam(frame, Vector3(0.85, -2.3, 0), Vector3(-0.85, 2.2, 0), 0.075, steel)
+
+            for post_x in [-0.85, 0.85]:
+                var foot := MeshInstance3D.new()
+                var foot_mesh := BoxMesh.new()
+                foot_mesh.size = Vector3(0.48, 0.18, 0.48)
+                foot.mesh = foot_mesh
+                foot.position = Vector3(post_x, -2.58, 0)
+                foot.material_override = rust
+                frame.add_child(foot)
+
+func _add_steel_beam(parent: Node3D, start: Vector3, finish: Vector3, width: float, material: Material) -> void:
+    var beam := MeshInstance3D.new()
+    var mesh := BoxMesh.new()
+    mesh.size = Vector3(width, start.distance_to(finish), width)
+    beam.mesh = mesh
+    beam.position = (start + finish) * 0.5
+    beam.quaternion = Quaternion(Vector3.UP, (finish - start).normalized())
+    beam.material_override = material
+    parent.add_child(beam)
 
 func _build_checkpoints() -> void:
     # Checkpoints sit safely above the third and fifth ledges.
