@@ -48,9 +48,9 @@ const T := {
 
 func _ready() -> void:
     _build_world()
+    # One coherent route system: footholds, scanned rock faces and timed hazards.
+    # The old imported pack and second asset course duplicated the same climbing lane.
     _build_photogrammetry_boulders()
-    _build_imported_obstacles()
-    _build_asset_course()
     _build_industrial_structures()
     _build_checkpoints()
     _build_obstacles()
@@ -156,13 +156,15 @@ func _build_photogrammetry_boulders() -> void:
         push_warning("Photogrammetry boulder could not be loaded.")
         return
 
+    # Scanned boulders sit just outside alternating footholds. Their edges are
+    # reachable with the scythe, while the middle of the route stays readable.
     var placements: Array[Dictionary] = [
-        {"position": Vector3(-1.45, 1.25, -0.28), "rotation": Vector3(0.12, 0.35, -0.18), "scale": 2.65},
-        {"position": Vector3(1.45, 4.25, -0.32), "rotation": Vector3(-0.16, 1.15, 0.22), "scale": 2.85},
-        {"position": Vector3(-1.4, 7.25, -0.30), "rotation": Vector3(0.08, 2.1, -0.12), "scale": 2.7},
-        {"position": Vector3(1.4, 10.15, -0.32), "rotation": Vector3(-0.1, 0.55, 0.16), "scale": 2.9},
-        {"position": Vector3(-1.45, 13.25, -0.28), "rotation": Vector3(0.14, 1.65, -0.2), "scale": 2.75},
-        {"position": Vector3(1.45, 16.35, -0.30), "rotation": Vector3(-0.12, 2.55, 0.14), "scale": 2.85}
+        {"position": Vector3(-3.15, 2.55, -0.22), "rotation": Vector3(0.12, 0.35, -0.18), "scale": 2.25},
+        {"position": Vector3(3.15, 5.45, -0.22), "rotation": Vector3(-0.16, 1.15, 0.22), "scale": 2.30},
+        {"position": Vector3(-3.15, 8.45, -0.22), "rotation": Vector3(0.08, 2.1, -0.12), "scale": 2.28},
+        {"position": Vector3(3.15, 11.45, -0.22), "rotation": Vector3(-0.1, 0.55, 0.16), "scale": 2.32},
+        {"position": Vector3(-3.15, 14.45, -0.22), "rotation": Vector3(0.14, 1.65, -0.2), "scale": 2.28},
+        {"position": Vector3(3.15, 17.45, -0.22), "rotation": Vector3(-0.12, 2.55, 0.14), "scale": 2.30}
     ]
 
     for placement in placements:
@@ -424,10 +426,11 @@ func _build_obstacles() -> void:
     warning_material.emission = Color(0.8, 0.12, 0.015)
     warning_material.emission_energy_multiplier = 1.1
 
+    # Pendulums guard the gaps between safe ledges, never the landing zones.
     var hazard_data := [
-        {"x": -3.45, "y": 5.75, "phase": 0.0},
-        {"x": 3.45, "y": 11.65, "phase": 1.8},
-        {"x": -3.45, "y": 17.55, "phase": 3.2}
+        {"x": 0.0, "y": 3.65, "phase": 0.0},
+        {"x": 0.0, "y": 9.55, "phase": 1.8},
+        {"x": 0.0, "y": 15.55, "phase": 3.2}
     ]
     for i in range(hazard_data.size()):
         var data: Dictionary = hazard_data[i]
