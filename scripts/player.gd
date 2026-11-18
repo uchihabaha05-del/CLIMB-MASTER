@@ -5,7 +5,7 @@ const GRAVITY := 19.0
 const MOVE_ACCEL := 8.0
 const AIR_STEER := 3.2
 const MAX_HORIZONTAL_SPEED := 7.5
-const HAMMER_REACH := 4.8
+const SCYTHE_REACH := 5.0
 const HOOK_SPRING := 34.0
 const HOOK_DAMPING := 7.5
 const MAX_HOOK_ACCEL := 42.0
@@ -15,6 +15,10 @@ const PLAY_PLANE_Z := 0.0
 var mobile := {"left": false, "right": false}
 var hammer_pivot: Node3D
 var hammer_head: Node3D
+var scythe_contact_valid := false
+var scythe_contact_point := Vector3.ZERO
+var scythe_contact_collider: Object = null
+var scythe_probe := SphereShape3D.new()
 var aim_angle := -0.72
 var aim_elevation := 0.0
 var dragging := false
@@ -26,7 +30,7 @@ var previous_hook_vector := Vector3.ZERO
 var hook_cooldown := 0.0
 var imported_skeleton: Skeleton3D
 var posed_bones: Array[int] = []
-var hook_feedback := "Проведи пальцем, чтобы навести молот; отпусти для зацепа."
+var hook_feedback := "Проведи пальцем, чтобы навести серп; при касании он зацепится."
 
 func _ready() -> void:
     global_position.z = PLAY_PLANE_Z
@@ -43,7 +47,8 @@ func _ready() -> void:
         # Keep the source rig intact until its exact bone map is verified.
     else:
         _make_fallback_human()
-    _make_hammer()
+    scythe_probe.radius = 0.22
+    _make_scythe()
 
 func _apply_seated_pose(root: Node) -> void:
     imported_skeleton = _find_skeleton(root)
@@ -226,61 +231,138 @@ func _make_fallback_human() -> void:
         eye.material_override = eye_material
         add_child(eye)
 
-func _make_hammer() -> void:
+func _make_scythe() -> void:
     hammer_pivot = Node3D.new()
-    hammer_pivot.position = Vector3(0.48, 0.95, 0)
+    hammer_pivot.position = Vector3(0.48, 0.95, 0.0)
     add_child(hammer_pivot)
 
-    var handle := MeshInstance3D.new()
-    var rod := CylinderMesh.new()
-    rod.top_radius = 0.065
-    rod.bottom_radius = 0.09
-    rod.height = 2.05
-    handle.mesh = rod
-    handle.position = Vector3(0, 1.0, 0)
-    handle.rotation.z = -0.12
     var wood := StandardMaterial3D.new()
-    wood.albedo_color = Color(0.25, 0.12, 0.055)
+    wood.albedo_color = Color(0.19, 0.105, 0.055)
     wood.roughness = 0.82
-    handle.material_override = wood
-    hammer_pivot.add_child(handle)
+    var shaft := MeshInstance3D.new()
+    var shaft_mesh := CylinderMesh.new()
+    shaft_mesh.top_radius = 0.055
+    shaft_mesh.bottom_radius = 0.085
+    shaft_mesh.height = 2.55
+    shaft.mesh = shaft_mesh
+    shaft.position = Vector3(0.0, 1.20, 0.0)
+    shaft.material_override = wood
+    hammer_pivot.add_child(shaft)
 
-    var grip_material := StandardMaterial3D.new()
-    grip_material.albedo_color = Color(0.12, 0.075, 0.045)
-    grip_material.roughness = 0.94
-    for band_y in [0.48, 0.58, 0.68]:
+    var grip_mat := StandardMaterial3D.new()
+    grip_mat.albedo_color = Color(0.095, 0.055, 0.032)
+    grip_mat.roughness = 0.95
+    for band_y in [0.35, 0.47, 0.59, 0.71]:
         var grip := MeshInstance3D.new()
         var grip_mesh := TorusMesh.new()
-        grip_mesh.inner_radius = 0.067
-        grip_mesh.outer_radius = 0.092
+        grip_mesh.inner_radius = 0.058
+        grip_mesh.outer_radius = 0.082
         grip.mesh = grip_mesh
-        grip.position = Vector3(0, band_y, 0)
+        grip.position = Vector3(0.0, band_y, 0.0)
         grip.rotation.x = PI * 0.5
-        grip.material_override = grip_material
+        grip.material_override = grip_mat
         hammer_pivot.add_child(grip)
 
+    var steel := StandardMaterial3D.new()
+    steel.albedo_color = Color(0.72, 0.79, 0.83)
+    steel.metallic = 0.96
+    steel.roughness = 0.17
+    steel.metallic_specular = 0.95
+
+    # Large crescent blade assembled from overlapping tapered-looking metal segments.
+    var blade_points: Array[Vector2] = [
+        Vector2(0.00, 2.12),
+        Vector2(0.34, 2.22),
+        Vector2(0.72, 2.43),
+        Vector2(1.02, 2.72),
+        Vector2(1.18, 3.04),
+        Vector2(1.17, 3.34),
+        Vector2(0.99, 3.58),
+        Vector2(0.72, 3.72)
+    ]
+    for i in range(blade_points.size() - 1):
+        var start := blade_points[i]
+        var finish := blade_points[i + 1]
+        var segment := MeshInstance3D.new()
+        var segment_mesh := BoxMesh.new()
+        var length := start.distance_to(finish)
+        segment_mesh.size = Vector3(length + 0.08, 0.30 - float(i) * 0.012, 0.12)
+        segment.mesh = segment_mesh
+        segment.position = Vector3((start.x + finish.x) * 0.5, (start.y + finish.y) * 0.5, 0.0)
+        segment.rotation.z = (finish - start).angle()
+        segment.material_override = steel
+        hammer_pivot.add_child(segment)
+
+    # Dark inner cutting edge gives the crescent a readable silhouette.
+    for i in range(1, blade_points.size() - 1):
+        var point := blade_points[i]
+        var edge := MeshInstance3D.new()
+        var edge_mesh := BoxMesh.new()
+        edge_mesh.size = Vector3(0.22, 0.045, 0.135)
+        edge.mesh = edge_mesh
+        edge.position = Vector3(point.x - 0.10, point.y - 0.12, 0.0)
+        edge.rotation.z = (blade_points[i + 1] - blade_points[i - 1]).angle()
+        var dark_steel := StandardMaterial3D.new()
+        dark_steel.albedo_color = Color(0.22, 0.29, 0.33)
+        dark_steel.metallic = 0.9
+        dark_steel.roughness = 0.25
+        edge.material_override = dark_steel
+        hammer_pivot.add_child(edge)
+
     hammer_head = Node3D.new()
-    hammer_head.position = Vector3(0, 2.02, 0)
+    hammer_head.position = Vector3(0.72, 3.72, 0.0)
     hammer_pivot.add_child(hammer_head)
 
-    var head_mesh := MeshInstance3D.new()
-    var box := BoxMesh.new()
-    box.size = Vector3(0.92, 0.34, 0.42)
-    head_mesh.mesh = box
-    var metal := StandardMaterial3D.new()
-    metal.albedo_color = Color(0.55, 0.59, 0.62)
-    metal.metallic = 0.92
-    metal.roughness = 0.2
-    head_mesh.material_override = metal
-    hammer_head.add_child(head_mesh)
+func _scythe_sample_points() -> Array[Vector3]:
+    return [
+        Vector3(0.0, 0.65, 0.0),
+        Vector3(0.0, 1.15, 0.0),
+        Vector3(0.0, 1.70, 0.0),
+        Vector3(0.0, 2.15, 0.0),
+        Vector3(0.38, 2.25, 0.0),
+        Vector3(0.74, 2.48, 0.0),
+        Vector3(1.03, 2.76, 0.0),
+        Vector3(1.18, 3.08, 0.0),
+        Vector3(1.16, 3.37, 0.0),
+        Vector3(0.98, 3.58, 0.0),
+        Vector3(0.72, 3.72, 0.0)
+    ]
 
-    var cap := MeshInstance3D.new()
-    var cap_mesh := BoxMesh.new()
-    cap_mesh.size = Vector3(0.2, 0.43, 0.46)
-    cap.mesh = cap_mesh
-    cap.position.x = 0.48
-    cap.material_override = metal
-    hammer_head.add_child(cap)
+func _query_scythe_collision(angle: float) -> Dictionary:
+    var space := get_world_3d().direct_space_state
+    var local_basis := Basis(Vector3(0.0, 0.0, 1.0), angle)
+    for local_point in _scythe_sample_points():
+        var world_point := hammer_pivot.global_position + local_basis * local_point
+        var query := PhysicsShapeQueryParameters3D.new()
+        query.shape = scythe_probe
+        query.transform = Transform3D(Basis.IDENTITY, world_point)
+        query.exclude = [get_rid()]
+        query.collide_with_bodies = true
+        query.collide_with_areas = false
+        var overlaps := space.intersect_shape(query, 4)
+        if not overlaps.is_empty():
+            var contact := space.get_rest_info(query)
+            if contact.is_empty():
+                var candidate: Dictionary = overlaps[0]
+                contact = {"position": world_point, "collider": candidate.get("collider")}
+            return contact
+    return {}
+
+func _try_lock_scythe_angle(previous_angle: float, next_angle: float) -> bool:
+    var delta_angle := next_angle - previous_angle
+    var steps := maxi(1, int(ceil(absf(delta_angle) / 0.045)))
+    for step in range(1, steps + 1):
+        var sample_angle := lerpf(previous_angle, next_angle, float(step) / float(steps))
+        var contact := _query_scythe_collision(sample_angle)
+        if not contact.is_empty():
+            scythe_contact_valid = true
+            scythe_contact_point = contact.get("position", hammer_pivot.global_position)
+            scythe_contact_point.z = PLAY_PLANE_Z
+            scythe_contact_collider = contact.get("collider")
+            return false
+    scythe_contact_valid = false
+    scythe_contact_collider = null
+    return true
 
 func set_mobile_input(key: String, pressed: bool) -> void:
     if mobile.has(key):
@@ -291,6 +373,8 @@ func reset_hammer() -> void:
     aim_elevation = 0.0
     anchored = false
     dragging = false
+    scythe_contact_valid = false
+    scythe_contact_collider = null
     hammer_pivot.rotation = Vector3.ZERO
     hook_cooldown = 0.0
     _update_hammer_pose()
@@ -331,7 +415,11 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _aim_from_drag(relative: Vector2) -> void:
     # Both screen axes rotate the hammer inside the fixed side-view XY plane.
-    aim_angle = clampf(aim_angle + (relative.x - relative.y) * 0.009, -PI * 0.92, PI * 0.92)
+    var previous_angle := aim_angle
+    var proposed_angle := clampf(aim_angle + (relative.x - relative.y) * 0.009, -PI * 0.92, PI * 0.92)
+    if _try_lock_scythe_angle(previous_angle, proposed_angle):
+        aim_angle = proposed_angle
+    # If the blade would cross a solid object, keep the last safe angle.
     aim_elevation = 0.0
     _update_hammer_pose()
 
@@ -364,7 +452,7 @@ func _physics_process(delta: float) -> void:
     global_position.z = PLAY_PLANE_Z
 
     # A hook remains attached to the world point, never to the moving player.
-    if anchored and global_position.distance_to(anchor_point) > HAMMER_REACH * 2.6:
+    if anchored and global_position.distance_to(anchor_point) > SCYTHE_REACH * 2.6:
         _release_hook()
     for collision_index in range(get_slide_collision_count()):
         var collision := get_slide_collision(collision_index)
@@ -399,62 +487,35 @@ func _try_hook() -> void:
     if hook_cooldown > 0.0:
         return
     _update_hammer_pose()
-    var origin := hammer_head.global_position
-    var direction := (hammer_pivot.global_transform.basis * Vector3.UP).normalized()
-    var space := get_world_3d().direct_space_state
+
+    # If the blade touched a solid object while aiming, hook that exact contact.
     var hit: Dictionary = {}
-
-    # Sweep a small sphere along the hammer path for forgiving mobile controls.
-    var probe := SphereShape3D.new()
-    probe.radius = 0.24
-    var shape_query := PhysicsShapeQueryParameters3D.new()
-    shape_query.shape = probe
-    shape_query.exclude = [get_rid()]
-    shape_query.collide_with_bodies = true
-    shape_query.collide_with_areas = false
-    var step_distance := 0.16
-    var distance := step_distance
-    while distance <= HAMMER_REACH:
-        shape_query.transform = Transform3D(Basis.IDENTITY, origin + direction * distance)
-        var overlaps := space.intersect_shape(shape_query, 8)
-        if not overlaps.is_empty():
-            hit = space.get_rest_info(shape_query)
-            if hit.is_empty():
-                var candidate: Dictionary = overlaps[0]
-                if candidate.has("collider") and candidate["collider"] is CollisionObject3D:
-                    hit = {"collider": candidate["collider"], "position": origin + direction * distance}
-            if not hit.is_empty():
-                break
-        distance += step_distance
-
-    # A wider ray fan also catches narrow ledges and platform edges.
-    if hit.is_empty():
-        var side := direction.cross(Vector3.FORWARD).normalized()
-        if side.length() < 0.1:
-            side = Vector3.RIGHT
-        var query := PhysicsRayQueryParameters3D.create(origin, origin + direction * HAMMER_REACH)
+    if scythe_contact_valid:
+        hit = {"position": scythe_contact_point, "collider": scythe_contact_collider}
+    else:
+        var origin := hammer_pivot.global_position
+        var direction := (hammer_pivot.global_transform.basis * Vector3.UP).normalized()
+        var space := get_world_3d().direct_space_state
+        var query := PhysicsRayQueryParameters3D.create(origin, origin + direction * SCYTHE_REACH)
         query.exclude = [get_rid()]
         query.collide_with_areas = false
-        for offset in [Vector3.ZERO, side * 0.18, -side * 0.18, Vector3.UP * 0.18, Vector3.DOWN * 0.18, side * 0.32, -side * 0.32]:
-            query.from = origin + offset
-            query.to = origin + offset + direction * HAMMER_REACH
-            hit = space.intersect_ray(query)
-            if not hit.is_empty():
-                break
+        hit = space.intersect_ray(query)
 
     if not hit.is_empty():
-        anchor_point = hit.get("position", origin + direction * minf(distance, HAMMER_REACH))
+        anchor_point = hit.get("position", hammer_head.global_position)
         anchor_point.z = PLAY_PLANE_Z
         var actual_distance := global_position.distance_to(anchor_point)
-        rope_length = maxf(1.0, actual_distance - 0.65)
+        rope_length = maxf(1.0, actual_distance - 0.55)
         anchored = true
         hook_cooldown = 0.22
-        hook_feedback = "Зацеп! Нажми один раз, чтобы отцепиться."
+        hook_feedback = "Серп зацепился! Нажми, чтобы отпустить."
     else:
         anchored = false
-        hook_feedback = "Не попал. Подведи молот ближе к камню или платформе."
+        hook_feedback = "Серп не зацепился. Подведи лезвие к камню или платформе."
 
 func _release_hook() -> void:
     anchored = false
     hook_cooldown = 0.12
-    hook_feedback = "Отцепился. Наведи молот и отпусти палец для нового зацепа."
+    scythe_contact_valid = false
+    scythe_contact_collider = null
+    hook_feedback = "Серп отпущен. Наведи лезвие и отпусти палец для нового зацепа."
