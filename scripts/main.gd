@@ -118,13 +118,13 @@ func _build_world() -> void:
     add_child(fill)
 
     _add_platform(Vector3(0, -0.7, 0), Vector3(5.2, 1.2, 9), Color(0.25, 0.29, 0.32))
-    _add_platform(Vector3(-1.45, 2.2, 0.0), Vector3(2.8, 0.6, 2.6), Color(0.35, 0.31, 0.26))
-    _add_platform(Vector3(1.45, 5.0, 0.0), Vector3(2.8, 0.55, 2.4), Color(0.32, 0.36, 0.39))
-    _add_platform(Vector3(-1.45, 7.8, 0.0), Vector3(2.6, 0.55, 2.3), Color(0.42, 0.34, 0.27))
-    _add_platform(Vector3(1.45, 10.7, 0.0), Vector3(2.8, 0.55, 2.3), Color(0.32, 0.38, 0.34))
-    _add_platform(Vector3(-1.45, 13.7, 0.0), Vector3(3.0, 0.55, 2.4), Color(0.39, 0.34, 0.31))
-    _add_platform(Vector3(1.45, 16.8, 0.0), Vector3(3.0, 0.55, 2.4), Color(0.31, 0.36, 0.42))
-    _add_platform(Vector3(-1.45, 20.0, 0.0), Vector3(3.5, 0.65, 3.0), Color(0.43, 0.36, 0.29))
+    _add_platform(Vector3(-1.42, 2.2, 0.0), Vector3(2.65, 0.58, 2.55), Color(0.35, 0.31, 0.26), -0.035)
+    _add_platform(Vector3(1.38, 5.0, 0.0), Vector3(2.55, 0.52, 2.25), Color(0.32, 0.36, 0.39), 0.045)
+    _add_platform(Vector3(-1.50, 7.8, 0.0), Vector3(2.45, 0.54, 2.15), Color(0.42, 0.34, 0.27), -0.06)
+    _add_platform(Vector3(1.38, 10.7, 0.0), Vector3(2.7, 0.50, 2.2), Color(0.32, 0.38, 0.34), 0.025)
+    _add_platform(Vector3(-1.40, 13.7, 0.0), Vector3(2.8, 0.56, 2.3), Color(0.39, 0.34, 0.31), 0.055)
+    _add_platform(Vector3(1.50, 16.8, 0.0), Vector3(2.75, 0.52, 2.25), Color(0.31, 0.36, 0.42), -0.04)
+    _add_platform(Vector3(-1.45, 20.0, 0.0), Vector3(3.35, 0.62, 2.8), Color(0.43, 0.36, 0.29), 0.02)
 
     # Keep the central climbing lane readable. Natural cliff outcrops frame
     # the route from the far left and right instead of spawning in front of it.
@@ -572,9 +572,10 @@ func _build_atmosphere() -> void:
     add_child(dust)
 
 
-func _add_platform(pos: Vector3, size: Vector3, color: Color) -> void:
+func _add_platform(pos: Vector3, size: Vector3, color: Color, tilt := 0.0) -> void:
     var body := StaticBody3D.new()
     body.position = pos
+    body.rotation.z = tilt
     var mesh_instance := MeshInstance3D.new()
     var mesh := BoxMesh.new()
     mesh.size = size
