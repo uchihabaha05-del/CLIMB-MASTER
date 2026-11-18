@@ -9,9 +9,13 @@ var restart_button: Button
 var start_y := 0.0
 var peak_y := 0.0
 var game_over := false
+var checkpoint_positions: Array[Vector3] = []
+var active_checkpoint := 0
+var checkpoint_label: Label
 
 func _ready() -> void:
     _build_world()
+    _build_checkpoints()
     _build_player()
     _build_camera()
     _build_hud()
@@ -30,13 +34,13 @@ func _build_world() -> void:
     add_child(env)
 
     _add_platform(Vector3(0, -0.7, 0), Vector3(9, 1.2, 9), Color(0.25, 0.29, 0.32))
-    _add_platform(Vector3(2.5, 2.2, -1.0), Vector3(3.2, 0.6, 2.6), Color(0.35, 0.31, 0.26))
-    _add_platform(Vector3(-1.8, 5.0, -2.0), Vector3(2.8, 0.55, 2.4), Color(0.32, 0.36, 0.39))
-    _add_platform(Vector3(1.5, 7.8, -3.0), Vector3(2.6, 0.55, 2.3), Color(0.42, 0.34, 0.27))
-    _add_platform(Vector3(-2.0, 10.7, -4.0), Vector3(2.8, 0.55, 2.3), Color(0.32, 0.38, 0.34))
-    _add_platform(Vector3(1.2, 13.7, -5.0), Vector3(3.0, 0.55, 2.4), Color(0.39, 0.34, 0.31))
-    _add_platform(Vector3(-1.2, 16.8, -6.0), Vector3(3.0, 0.55, 2.4), Color(0.31, 0.36, 0.42))
-    _add_platform(Vector3(1.5, 20.0, -7.0), Vector3(3.5, 0.65, 3.0), Color(0.43, 0.36, 0.29))
+    _add_platform(Vector3(2.5, 2.2, 0.0), Vector3(3.2, 0.6, 2.6), Color(0.35, 0.31, 0.26))
+    _add_platform(Vector3(-1.8, 5.0, 0.0), Vector3(2.8, 0.55, 2.4), Color(0.32, 0.36, 0.39))
+    _add_platform(Vector3(1.5, 7.8, 0.0), Vector3(2.6, 0.55, 2.3), Color(0.42, 0.34, 0.27))
+    _add_platform(Vector3(-2.0, 10.7, 0.0), Vector3(2.8, 0.55, 2.3), Color(0.32, 0.38, 0.34))
+    _add_platform(Vector3(1.2, 13.7, 0.0), Vector3(3.0, 0.55, 2.4), Color(0.39, 0.34, 0.31))
+    _add_platform(Vector3(-1.2, 16.8, 0.0), Vector3(3.0, 0.55, 2.4), Color(0.31, 0.36, 0.42))
+    _add_platform(Vector3(1.5, 20.0, 0.0), Vector3(3.5, 0.65, 3.0), Color(0.43, 0.36, 0.29))
 
     # Climbable rock pillars now have matching physics colliders.
     for i in range(12):
@@ -66,6 +70,46 @@ func _build_world() -> void:
         rock_body.position = Vector3(randf_range(-13, 13), randf_range(0, 17), randf_range(-13, -9))
         rock_body.rotation.z = randf_range(-0.2, 0.2)
         add_child(rock_body)
+
+func _build_checkpoints() -> void:
+    # Checkpoints sit safely above the third and fifth ledges.
+    checkpoint_positions = [
+        Vector3(1.5, 8.75, 0.0),
+        Vector3(1.2, 14.45, 0.0)
+    ]
+    for i in range(checkpoint_positions.size()):
+        var marker := Node3D.new()
+        marker.position = checkpoint_positions[i]
+        add_child(marker)
+
+        var ring := MeshInstance3D.new()
+        var ring_mesh := TorusMesh.new()
+        ring_mesh.inner_radius = 0.65
+        ring_mesh.outer_radius = 0.82
+        ring.mesh = ring_mesh
+        ring.rotation.x = PI * 0.5
+        var ring_mat := StandardMaterial3D.new()
+        ring_mat.albedo_color = Color(0.15, 0.85, 0.62)
+        ring_mat.emission_enabled = true
+        ring_mat.emission = Color(0.05, 0.65, 0.42)
+        ring_mat.emission_energy_multiplier = 1.4
+        ring.material_override = ring_mat
+        marker.add_child(ring)
+
+        var beacon := MeshInstance3D.new()
+        var beacon_mesh := CylinderMesh.new()
+        beacon_mesh.top_radius = 0.035
+        beacon_mesh.bottom_radius = 0.12
+        beacon_mesh.height = 1.7
+        beacon.mesh = beacon_mesh
+        beacon.position.y = 0.9
+        var beacon_mat := StandardMaterial3D.new()
+        beacon_mat.albedo_color = Color(0.1, 0.75, 0.55, 0.28)
+        beacon_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+        beacon_mat.emission_enabled = true
+        beacon_mat.emission = Color(0.02, 0.35, 0.22)
+        beacon.material_override = beacon_mat
+        marker.add_child(beacon)
 
 func _add_platform(pos: Vector3, size: Vector3, color: Color) -> void:
     var body := StaticBody3D.new()
@@ -156,6 +200,7 @@ func _process(delta: float) -> void:
     if not is_instance_valid(player):
         return
     var h := maxf(0.0, player.global_position.y - start_y)
+    _check_checkpoint()
     peak_y = maxf(peak_y, h)
     height_label.text = "ВЫСОТА: %d м  |  РЕКОРД: %d м" % [int(h), int(peak_y)]
     camera.global_position = camera.global_position.lerp(
@@ -165,11 +210,20 @@ func _process(delta: float) -> void:
     camera.look_at(player.global_position + Vector3(0, 1.3, 0), Vector3.UP)
     if player.global_position.y < -8.0 and not game_over:
         game_over = true
-        status_label.text = "Падение! Попробуй ещё раз."
+        status_label.text = "Падение! Возврат к контрольной точке."
         restart_button.visible = true
 
+func _check_checkpoint() -> void:
+    for i in range(active_checkpoint, checkpoint_positions.size()):
+        if player.global_position.distance_to(checkpoint_positions[i]) < 1.45:
+            active_checkpoint = i + 1
+            status_label.text = "Контрольная точка %d сохранена!" % active_checkpoint
+
 func _reset_player() -> void:
-    player.global_position = Vector3(0, 1.0, 0)
+    var respawn := Vector3(0, 1.0, 0)
+    if active_checkpoint > 0:
+        respawn = checkpoint_positions[active_checkpoint - 1] + Vector3(0, 0.65, 0)
+    player.global_position = respawn
     player.velocity = Vector3.ZERO
     player.reset_hammer()
     game_over = false
