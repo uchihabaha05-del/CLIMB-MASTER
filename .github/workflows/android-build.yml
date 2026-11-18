@@ -53,6 +53,31 @@ jobs:
       - name: Import project
         run: godot --headless --editor --path . --quit
 
+      - name: Diagnose Android export configuration
+        shell: bash
+        run: |
+          set +e
+          echo "=== Godot and Java versions ==="
+          godot --version
+          java -version
+          echo "=== Environment paths ==="
+          printf 'HOME=%s\\nANDROID_HOME=%s\\nJAVA_HOME=%s\\n' "$HOME" "$ANDROID_HOME" "$JAVA_HOME"
+          echo "=== Android SDK components ==="
+          for p in "$ANDROID_HOME/platform-tools/adb" "$ANDROID_HOME/platforms/android-34/android.jar" "$ANDROID_HOME/build-tools/34.0.0/aapt2" "$ANDROID_HOME/ndk/23.2.8568313" "$ANDROID_HOME/cmake/3.10.2.4988404"; do
+            if test -e "$p"; then echo "OK: $p"; else echo "MISSING: $p"; fi
+          done
+          echo "=== Godot templates ==="
+          ls -lah "$HOME/.local/share/godot/export_templates/4.3.stable/" | head -35
+          echo "=== Godot editor settings ==="
+          grep -E 'android_sdk_path|java_sdk_path|debug_keystore' "$HOME/.config/godot/editor_settings-4.tres" | sed -E 's/(password|pass) = .*/\\1 = [redacted]/'
+          echo "=== Android export preset fields ==="
+          grep -E '^(name|platform|package/|keystore/|architectures/)' export_presets.cfg | sed -E 's/(password) = .*/\\1 = [redacted]/'
+          echo "=== Debug signing key ==="
+          keytool -list -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey | head -12
+          echo "=== Import diagnostics ==="
+          godot --headless --verbose --editor --path . --quit 2>&1 | tail -90
+          echo "=== End diagnostics ==="
+
       - name: Export Android APK
         env:
           GODOT_ANDROID_KEYSTORE_DEBUG_PATH: /home/runner/.android/debug.keystore
