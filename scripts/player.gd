@@ -30,21 +30,38 @@ var hook_feedback := "Веди серп пальцем по экрану. Упи
 
 func _ready() -> void:
     global_position.z = PLAY_PLANE_Z
-    var pot_loaded := _add_imported_model("res://assets/models/cauldron.glb", 1.72, "ImportedCauldron")
-    if not pot_loaded:
-        _make_fallback_pot()
     _make_player_collision()
-    var human_loaded := _add_imported_model("res://assets/models/male-base-mesh-base_male.glb", 1.58, "ImportedClimber")
-    if human_loaded:
-        var human := get_node("ImportedClimber") as Node3D
-        # Keep the lower body inside the pot; the upper torso and head remain visible.
-        human.position = Vector3(0.0, -0.08, 0.12)
-        human.rotation_degrees = Vector3(0.0, 180.0, 0.0)
-        _apply_seated_pose(human)
+
+    # Use the newly uploaded illustrated character-in-a-pot asset.
+    # It is a front-facing 2D character plate inside the 3D world; the scythe,
+    # collision and climbing physics remain fully 3D.
+    var character_texture := load("res://assets/character.svg") as Texture2D
+    if character_texture != null:
+        var character_sprite := Sprite3D.new()
+        character_sprite.name = "UploadedCharacter"
+        character_sprite.texture = character_texture
+        character_sprite.pixel_size = 0.00335
+        character_sprite.position = Vector3(0.0, 0.86, 0.12)
+        character_sprite.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
+        character_sprite.shaded = true
+        add_child(character_sprite)
     else:
-        _make_fallback_human()
-    scythe_probe.radius = 0.22
+        push_warning("Uploaded character SVG could not be loaded; using the 3D fallback.")
+        var pot_loaded := _add_imported_model("res://assets/models/cauldron.glb", 1.72, "ImportedCauldron")
+        if not pot_loaded:
+            _make_fallback_pot()
+        var human_loaded := _add_imported_model("res://assets/models/male-base-mesh-base_male.glb", 1.58, "ImportedClimber")
+        if human_loaded:
+            var human := get_node("ImportedClimber") as Node3D
+            human.position = Vector3(0.0, -0.08, 0.12)
+            human.rotation_degrees = Vector3(0.0, 180.0, 0.0)
+            _apply_seated_pose(human)
+        else:
+            _make_fallback_human()
+
+    scythe_probe.radius = 0.18
     _make_scythe()
+
 
 func _apply_seated_pose(root: Node) -> void:
     imported_skeleton = _find_skeleton(root)
@@ -229,30 +246,36 @@ func _make_fallback_human() -> void:
 
 func _make_scythe() -> void:
     hammer_pivot = Node3D.new()
-    hammer_pivot.position = Vector3(0.48, 0.95, 0.0)
+    hammer_pivot.name = "ScythePivot"
+    hammer_pivot.position = Vector3(0.42, 0.98, -0.04)
     add_child(hammer_pivot)
 
+    # A single tapered ash-wood haft, with a darker end grain and metal collar.
     var wood := StandardMaterial3D.new()
-    wood.albedo_color = Color(0.19, 0.105, 0.055)
-    wood.roughness = 0.82
+    wood.albedo_color = Color(0.25, 0.13, 0.065)
+    wood.roughness = 0.76
+    wood.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
     var shaft := MeshInstance3D.new()
+    shaft.name = "AshWoodHaft"
     var shaft_mesh := CylinderMesh.new()
-    shaft_mesh.top_radius = 0.055
-    shaft_mesh.bottom_radius = 0.085
-    shaft_mesh.height = 2.55
+    shaft_mesh.top_radius = 0.047
+    shaft_mesh.bottom_radius = 0.073
+    shaft_mesh.height = 2.62
+    shaft_mesh.radial_segments = 12
     shaft.mesh = shaft_mesh
     shaft.position = Vector3(0.0, 1.20, 0.0)
     shaft.material_override = wood
     hammer_pivot.add_child(shaft)
 
     var grip_mat := StandardMaterial3D.new()
-    grip_mat.albedo_color = Color(0.095, 0.055, 0.032)
-    grip_mat.roughness = 0.95
-    for band_y in [0.35, 0.47, 0.59, 0.71]:
+    grip_mat.albedo_color = Color(0.075, 0.045, 0.028)
+    grip_mat.roughness = 0.98
+    for band_y in [0.30, 0.40, 0.50, 0.60, 0.70, 0.80]:
         var grip := MeshInstance3D.new()
         var grip_mesh := TorusMesh.new()
-        grip_mesh.inner_radius = 0.058
-        grip_mesh.outer_radius = 0.082
+        grip_mesh.inner_radius = 0.052
+        grip_mesh.outer_radius = 0.078
+        grip_mesh.rings = 8
         grip.mesh = grip_mesh
         grip.position = Vector3(0.0, band_y, 0.0)
         grip.rotation.x = PI * 0.5
@@ -260,54 +283,109 @@ func _make_scythe() -> void:
         hammer_pivot.add_child(grip)
 
     var steel := StandardMaterial3D.new()
-    steel.albedo_color = Color(0.72, 0.79, 0.83)
-    steel.metallic = 0.96
-    steel.roughness = 0.17
-    steel.metallic_specular = 0.95
+    steel.albedo_color = Color(0.68, 0.75, 0.79)
+    steel.metallic = 0.94
+    steel.roughness = 0.24
+    steel.metallic_specular = 0.9
 
-    # Large crescent blade assembled from overlapping tapered-looking metal segments.
-    var blade_points: Array[Vector2] = [
-        Vector2(0.00, 2.12),
-        Vector2(0.34, 2.22),
-        Vector2(0.72, 2.43),
-        Vector2(1.02, 2.72),
-        Vector2(1.18, 3.04),
-        Vector2(1.17, 3.34),
-        Vector2(0.99, 3.58),
-        Vector2(0.72, 3.72)
+    var collar := MeshInstance3D.new()
+    var collar_mesh := CylinderMesh.new()
+    collar_mesh.top_radius = 0.105
+    collar_mesh.bottom_radius = 0.105
+    collar_mesh.height = 0.19
+    collar.mesh = collar_mesh
+    collar.position = Vector3(0.0, 2.43, 0.0)
+    collar.material_override = steel
+    hammer_pivot.add_child(collar)
+
+    # Forged crescent blade: one continuous extruded mesh, not a row of boxes.
+    var outline := PackedVector2Array([
+        Vector2(-0.06, 2.48),
+        Vector2(0.28, 2.52),
+        Vector2(0.67, 2.69),
+        Vector2(1.02, 2.98),
+        Vector2(1.27, 3.36),
+        Vector2(1.38, 3.77),
+        Vector2(1.31, 4.14),
+        Vector2(1.08, 4.43),
+        Vector2(0.76, 4.57),
+        Vector2(0.56, 4.48),
+        Vector2(0.84, 4.28),
+        Vector2(1.02, 4.02),
+        Vector2(1.08, 3.72),
+        Vector2(0.98, 3.43),
+        Vector2(0.75, 3.17),
+        Vector2(0.43, 2.98),
+        Vector2(0.10, 2.88)
+    ])
+    var blade_surface := SurfaceTool.new()
+    blade_surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+    var center := Vector2.ZERO
+    for point in outline:
+        center += point
+    center /= float(outline.size())
+
+    for i in range(outline.size()):
+        var next_i := (i + 1) % outline.size()
+        blade_surface.add_vertex(Vector3(center.x, center.y, 0.075))
+        blade_surface.add_vertex(Vector3(outline[i].x, outline[i].y, 0.075))
+        blade_surface.add_vertex(Vector3(outline[next_i].x, outline[next_i].y, 0.075))
+        blade_surface.add_vertex(Vector3(center.x, center.y, -0.075))
+        blade_surface.add_vertex(Vector3(outline[next_i].x, outline[next_i].y, -0.075))
+        blade_surface.add_vertex(Vector3(outline[i].x, outline[i].y, -0.075))
+        var next_point := outline[next_i]
+        blade_surface.add_vertex(Vector3(outline[i].x, outline[i].y, 0.075))
+        blade_surface.add_vertex(Vector3(outline[i].x, outline[i].y, -0.075))
+        blade_surface.add_vertex(Vector3(next_point.x, next_point.y, -0.075))
+        blade_surface.add_vertex(Vector3(outline[i].x, outline[i].y, 0.075))
+        blade_surface.add_vertex(Vector3(next_point.x, next_point.y, -0.075))
+        blade_surface.add_vertex(Vector3(next_point.x, next_point.y, 0.075))
+
+    blade_surface.generate_normals()
+    var blade := MeshInstance3D.new()
+    blade.name = "ForgedCrescentBlade"
+    blade.mesh = blade_surface.commit()
+    blade.material_override = steel
+    hammer_pivot.add_child(blade)
+
+    # A darker sharpened bevel follows the inner crescent edge.
+    var edge_material := StandardMaterial3D.new()
+    edge_material.albedo_color = Color(0.25, 0.32, 0.35)
+    edge_material.metallic = 0.98
+    edge_material.roughness = 0.18
+    var edge_points := [
+        Vector2(0.56, 4.48), Vector2(0.84, 4.28),
+        Vector2(1.02, 4.02), Vector2(1.08, 3.72),
+        Vector2(0.98, 3.43), Vector2(0.75, 3.17)
     ]
-    for i in range(blade_points.size() - 1):
-        var start := blade_points[i]
-        var finish := blade_points[i + 1]
-        var segment := MeshInstance3D.new()
-        var segment_mesh := BoxMesh.new()
-        var length := start.distance_to(finish)
-        segment_mesh.size = Vector3(length + 0.08, 0.30 - float(i) * 0.012, 0.12)
-        segment.mesh = segment_mesh
-        segment.position = Vector3((start.x + finish.x) * 0.5, (start.y + finish.y) * 0.5, 0.0)
-        segment.rotation.z = (finish - start).angle()
-        segment.material_override = steel
-        hammer_pivot.add_child(segment)
-
-    # Dark inner cutting edge gives the crescent a readable silhouette.
-    for i in range(1, blade_points.size() - 1):
-        var point := blade_points[i]
-        var edge := MeshInstance3D.new()
+    for i in range(edge_points.size() - 1):
+        var p0: Vector2 = edge_points[i]
+        var p1: Vector2 = edge_points[i + 1]
+        var edge_segment := MeshInstance3D.new()
         var edge_mesh := BoxMesh.new()
-        edge_mesh.size = Vector3(0.22, 0.045, 0.135)
-        edge.mesh = edge_mesh
-        edge.position = Vector3(point.x - 0.10, point.y - 0.12, 0.0)
-        edge.rotation.z = (blade_points[i + 1] - blade_points[i - 1]).angle()
-        var dark_steel := StandardMaterial3D.new()
-        dark_steel.albedo_color = Color(0.22, 0.29, 0.33)
-        dark_steel.metallic = 0.9
-        dark_steel.roughness = 0.25
-        edge.material_override = dark_steel
-        hammer_pivot.add_child(edge)
+        var edge_length := p0.distance_to(p1)
+        edge_mesh.size = Vector3(edge_length, 0.035, 0.16)
+        edge_segment.mesh = edge_mesh
+        edge_segment.position = Vector3((p0.x + p1.x) * 0.5, (p0.y + p1.y) * 0.5, 0.0)
+        edge_segment.rotation.z = (p1 - p0).angle()
+        edge_segment.material_override = edge_material
+        hammer_pivot.add_child(edge_segment)
+
+    # Two visible rivets anchor the blade tang to the haft.
+    for rivet_y in [2.58, 2.77]:
+        var rivet := MeshInstance3D.new()
+        var rivet_mesh := SphereMesh.new()
+        rivet_mesh.radius = 0.055
+        rivet_mesh.height = 0.11
+        rivet.mesh = rivet_mesh
+        rivet.position = Vector3(0.16, rivet_y, 0.105)
+        rivet.material_override = edge_material
+        hammer_pivot.add_child(rivet)
 
     hammer_head = Node3D.new()
-    hammer_head.position = Vector3(0.72, 3.72, 0.0)
+    hammer_head.position = Vector3(1.31, 4.14, 0.0)
     hammer_pivot.add_child(hammer_head)
+
 
 func _scythe_sample_points() -> Array[Vector3]:
     return [
