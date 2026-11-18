@@ -7,8 +7,15 @@ var height_label: Label
 var status_label: Label
 var restart_button: Button
 var pause_button: Button
+const TOP_HEIGHT := 20.0
+const SAVE_PATH := "user://climb_master.cfg"
 var start_y := 0.0
-var peak_y := 0.0
+var best_height := 0.0
+var finished := false
+var finish_position := Vector3.ZERO
+var reset_button: Button
+var win_overlay: Control
+var win_label: Label
 var game_over := false
 var checkpoint_positions: Array[Vector3] = []
 var active_checkpoint := 0
@@ -32,7 +39,8 @@ func _ready() -> void:
     _build_camera()
     _build_hud()
     start_y = player.global_position.y
-    peak_y = start_y
+    _load_record()
+    record_label.text = "РЕКОРД  %d м" % int(best_height)
 
 func _build_world() -> void:
     var env := WorldEnvironment.new()
@@ -226,12 +234,12 @@ func _build_asset_course() -> void:
     var placements: Array[Dictionary] = [
         {"file": "fallen_log", "position": Vector3(-3.15, 1.15, -0.58), "rotation": Vector3(0.0, 0.12, 0.24), "scale": 0.78},
         {"file": "crate_stack", "position": Vector3(3.1, 4.1, -0.58), "rotation": Vector3(0.0, -0.18, -0.08), "scale": 0.72},
-        {"file": "rock_arch", "position": Vector3(-3.25, 7.05, -0.62), "rotation": Vector3(0.0, 0.0, 0.0), "scale": 0.70},
-        {"file": "tire_stack", "position": Vector3(3.15, 10.0, -0.58), "rotation": Vector3(0.0, 0.25, 0.06), "scale": 0.72},
-        {"file": "pipe_cluster", "position": Vector3(-3.2, 12.95, -0.58), "rotation": Vector3(0.0, 0.0, 0.10), "scale": 0.68},
-        {"file": "broken_bridge", "position": Vector3(3.1, 15.85, -0.62), "rotation": Vector3(0.0, 0.0, -0.12), "scale": 0.70},
+        {"file": "rock_arch", "collision": "trimesh", "position": Vector3(-3.25, 7.05, -0.62), "rotation": Vector3(0.0, 0.0, 0.0), "scale": 0.70},
+        {"file": "tire_stack", "collision": "trimesh", "position": Vector3(3.15, 10.0, -0.58), "rotation": Vector3(0.0, 0.25, 0.06), "scale": 0.72},
+        {"file": "pipe_cluster", "collision": "trimesh", "position": Vector3(-3.2, 12.95, -0.58), "rotation": Vector3(0.0, 0.0, 0.10), "scale": 0.68},
+        {"file": "broken_bridge", "collision": "trimesh", "position": Vector3(3.1, 15.85, -0.62), "rotation": Vector3(0.0, 0.0, -0.12), "scale": 0.70},
         {"file": "ice_boulder", "position": Vector3(-3.15, 18.75, -0.58), "rotation": Vector3(0.0, 0.55, -0.10), "scale": 0.70},
-        {"file": "giant_chain", "position": Vector3(3.1, 19.2, -0.60), "rotation": Vector3(0.0, 0.0, 0.0), "scale": 0.58}
+        {"file": "giant_chain", "collision": "trimesh", "position": Vector3(3.1, 19.2, -0.60), "rotation": Vector3(0.0, 0.0, 0.0), "scale": 0.58}
     ]
 
     for item in placements:
@@ -249,18 +257,22 @@ func _build_asset_course() -> void:
         instance.rotation = item["rotation"]
         instance.scale = Vector3.ONE * float(item["scale"])
         add_child(instance)
-        _add_asset_collisions(instance)
+        _add_asset_collisions(instance, str(item.get("collision", "convex")) == "trimesh")
 
 
-func _add_asset_collisions(node: Node) -> void:
-    # Convex colliders are cheaper than triangle meshes on mobile.
+func _add_asset_collisions(node: Node, trimesh := false) -> void:
+    # Convex hulls are cheap, but fill in arches, holes and chains, so those assets
+    # use an exact (static) triangle-mesh collider instead.
     if node is MeshInstance3D:
         var mesh_instance := node as MeshInstance3D
         if mesh_instance.mesh != null:
-            mesh_instance.create_convex_collision(true, true)
+            if trimesh:
+                mesh_instance.create_trimesh_collision()
+            else:
+                mesh_instance.create_convex_collision(true, true)
     for child in node.get_children():
         if child is not StaticBody3D:
-            _add_asset_collisions(child)
+            _add_asset_collisions(child, trimesh)
 
 
 func _build_industrial_structures() -> void:
@@ -321,7 +333,7 @@ func _build_checkpoints() -> void:
         ring_mesh.outer_radius = 0.82
         ring.mesh = ring_mesh
         # Keep the checkpoint ring facing the side-on camera.
-        ring.rotation = Vector3.ZERO
+        ring.rotation_degrees = Vector3(90.0, 0.0, 0.0)
         var ring_mat := StandardMaterial3D.new()
         ring_mat.albedo_color = Color(0.15, 0.85, 0.62)
         ring_mat.emission_enabled = true
@@ -344,6 +356,30 @@ func _build_checkpoints() -> void:
         beacon_mat.emission = Color(0.02, 0.35, 0.22)
         beacon.material_override = beacon_mat
         marker.add_child(beacon)
+
+    _build_finish_marker()
+
+func _build_finish_marker() -> void:
+    finish_position = Vector3(-1.45, 21.0, 0.0)
+    var marker := Node3D.new()
+    marker.name = "SummitMarker"
+    marker.position = finish_position
+    add_child(marker)
+    var gold := StandardMaterial3D.new()
+    gold.albedo_color = Color(1.0, 0.78, 0.22)
+    gold.metallic = 0.8
+    gold.roughness = 0.3
+    gold.emission_enabled = true
+    gold.emission = Color(0.9, 0.55, 0.05)
+    gold.emission_energy_multiplier = 1.3
+    var ring := MeshInstance3D.new()
+    var ring_mesh := TorusMesh.new()
+    ring_mesh.inner_radius = 0.72
+    ring_mesh.outer_radius = 0.95
+    ring.mesh = ring_mesh
+    ring.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+    ring.material_override = gold
+    marker.add_child(ring)
 
 func _build_obstacles() -> void:
     # Compact edge-mounted pendulums: hazards challenge timing without sealing
@@ -369,12 +405,11 @@ func _build_obstacles() -> void:
         var data: Dictionary = hazard_data[i]
         var obstacle := AnimatableBody3D.new()
         obstacle.name = "EdgePendulum_%d" % i
-        obstacle.position = Vector3(float(data["x"]), float(data["y"]), 0.25)
+        obstacle.position = Vector3(float(data["x"]), float(data["y"]), 0.0)
         obstacle.sync_to_physics = true
         obstacle.add_to_group("climb_hazard")
 
-        var pivot := Node3D.new()
-        obstacle.add_child(pivot)
+        var pivot: Node3D = obstacle   # arm, weight and collision are children of the body itself
         var arm := MeshInstance3D.new()
         var arm_mesh := CylinderMesh.new()
         arm_mesh.top_radius = 0.075
@@ -478,7 +513,7 @@ func _build_hud() -> void:
     climb_progress = ProgressBar.new()
     climb_progress.custom_minimum_size = Vector2(0, 8)
     climb_progress.min_value = 0
-    climb_progress.max_value = 30
+    climb_progress.max_value = TOP_HEIGHT
     climb_progress.value = 0
     climb_progress.show_percentage = false
     climb_progress.add_theme_stylebox_override("background", _hud_panel_style(Color(0.12, 0.17, 0.20)))
@@ -493,7 +528,7 @@ func _build_hud() -> void:
 
     # Compact checkpoint badge.
     checkpoint_label = Label.new()
-    checkpoint_label.text = "◆  СТАРТ  •  КП 0"
+    checkpoint_label.text = "СТАРТ  •  КП 0"
     checkpoint_label.position = Vector2(22, 148)
     checkpoint_label.add_theme_font_size_override("font_size", 14)
     checkpoint_label.add_theme_color_override("font_color", Color(0.72, 0.94, 0.86))
@@ -503,7 +538,7 @@ func _build_hud() -> void:
     var controls := HBoxContainer.new()
     controls.anchor_left = 1.0
     controls.anchor_right = 1.0
-    controls.offset_left = -154
+    controls.offset_left = -200
     controls.offset_right = -22
     controls.offset_top = 20
     controls.offset_bottom = 82
@@ -511,7 +546,7 @@ func _build_hud() -> void:
     hud.add_child(controls)
 
     pause_button = Button.new()
-    pause_button.text = "Ⅱ"
+    pause_button.text = "II"
     pause_button.tooltip_text = "Пауза"
     pause_button.custom_minimum_size = Vector2(62, 58)
     pause_button.add_theme_font_size_override("font_size", 24)
@@ -520,11 +555,11 @@ func _build_hud() -> void:
     pause_button.pressed.connect(_toggle_pause)
     controls.add_child(pause_button)
 
-    var reset_button := Button.new()
-    reset_button.text = "↻"
+    reset_button = Button.new()
+    reset_button.text = "СБРОС"
     reset_button.tooltip_text = "Вернуться к контрольной точке"
-    reset_button.custom_minimum_size = Vector2(62, 58)
-    reset_button.add_theme_font_size_override("font_size", 27)
+    reset_button.custom_minimum_size = Vector2(96, 58)
+    reset_button.add_theme_font_size_override("font_size", 15)
     _style_hud_button(reset_button, Color(0.20, 0.11, 0.09, 0.96))
     reset_button.process_mode = Node.PROCESS_MODE_ALWAYS
     reset_button.pressed.connect(_reset_player)
@@ -553,7 +588,7 @@ func _build_hud() -> void:
     hint_panel.add_child(status_label)
 
     restart_button = Button.new()
-    restart_button.text = "↻  ВЕРНУТЬСЯ К КОНТРОЛЬНОЙ ТОЧКЕ"
+    restart_button.text = "ВЕРНУТЬСЯ К КОНТРОЛЬНОЙ ТОЧКЕ"
     restart_button.anchor_left = 0.5
     restart_button.anchor_right = 0.5
     restart_button.anchor_top = 0.5
@@ -627,6 +662,10 @@ func _build_hud() -> void:
     menu_reset.pressed.connect(_reset_player)
     pause_content.add_child(menu_reset)
 
+    _build_win_overlay(hud)
+    # Touches that start on these controls must not swing the scythe.
+    player.ui_blockers = [pause_button, reset_button, restart_button, win_overlay]
+
 
 func _hud_panel_style(color: Color) -> StyleBoxFlat:
     var style := StyleBoxFlat.new()
@@ -662,19 +701,21 @@ func _style_hud_button(button: Button, color: Color) -> void:
 
 
 func _toggle_pause() -> void:
+    player.release_pointer()
     get_tree().paused = not get_tree().paused
     if is_instance_valid(pause_button):
-        pause_button.text = "▶" if get_tree().paused else "Ⅱ"
+        pause_button.text = ">" if get_tree().paused else "II"
     if is_instance_valid(pause_overlay):
         pause_overlay.visible = get_tree().paused
 
-func _process(delta: float) -> void:
+func _physics_process(delta: float) -> void:
     obstacle_clock += delta
     for i in range(moving_obstacles.size()):
         var obstacle := moving_obstacles[i]
         if is_instance_valid(obstacle):
-            var pivot := obstacle.get_child(0) as Node3D
-            pivot.rotation.z = sin(obstacle_clock * (0.82 + float(i) * 0.13) + float(i) * 1.7) * 0.48
+            obstacle.rotation.z = sin(obstacle_clock * (0.82 + float(i) * 0.13) + float(i) * 1.7) * 0.48
+
+func _process(delta: float) -> void:
     if not is_instance_valid(player):
         return
     var h := maxf(0.0, player.global_position.y - start_y)
@@ -682,10 +723,15 @@ func _process(delta: float) -> void:
     if player.hook_feedback != last_player_feedback:
         last_player_feedback = player.hook_feedback
         status_label.text = last_player_feedback
-    peak_y = maxf(peak_y, h)
+    if h > best_height:
+        var old_best := int(best_height)
+        best_height = h
+        if int(best_height) != old_best:
+            _save_record()
     height_label.text = "%d м" % int(h)
-    record_label.text = "РЕКОРД  %d м" % int(peak_y)
-    climb_progress.value = clampf(h, 0.0, 30.0)
+    record_label.text = "РЕКОРД  %d м" % int(best_height)
+    climb_progress.value = clampf(h, 0.0, TOP_HEIGHT)
+    _check_finish()
     # Fixed, slightly elevated chase camera: it follows the climber but does not orbit.
     # Fixed side-on camera: no orbit, depth travel, or perspective drift.
     var target_camera := Vector3(player.global_position.x, player.global_position.y + 2.25, 18.0)
@@ -693,7 +739,7 @@ func _process(delta: float) -> void:
     camera.look_at(player.global_position + Vector3(0, 2.25, 0), Vector3.UP)
     if player.global_position.y < -8.0 and not game_over:
         game_over = true
-        status_label.text = "Падение! Нажми ↻, чтобы вернуться к контрольной точке."
+        status_label.text = "Падение! Нажми СБРОС, чтобы вернуться к контрольной точке."
         restart_button.visible = true
 
 func _check_checkpoint() -> void:
@@ -701,12 +747,16 @@ func _check_checkpoint() -> void:
         if player.global_position.distance_to(checkpoint_positions[i]) < 1.45:
             active_checkpoint = i + 1
             status_label.text = "КОНТРОЛЬНАЯ ТОЧКА %d СОХРАНЕНА!" % active_checkpoint
-            checkpoint_label.text = "◆  КОНТРОЛЬНАЯ ТОЧКА  •  %d" % active_checkpoint
+            checkpoint_label.text = "КОНТРОЛЬНАЯ ТОЧКА  •  %d" % active_checkpoint
 
 func _reset_player() -> void:
     get_tree().paused = false
+    player.release_pointer()
+    finished = false
+    if is_instance_valid(win_overlay):
+        win_overlay.visible = false
     if is_instance_valid(pause_button):
-        pause_button.text = "Ⅱ"
+        pause_button.text = "II"
     if is_instance_valid(pause_overlay):
         pause_overlay.visible = false
     var respawn := Vector3(0, 1.0, 0)
@@ -719,3 +769,83 @@ func _reset_player() -> void:
     game_over = false
     restart_button.visible = false
     status_label.text = "КАСАЙСЯ ЭКРАНА И ВЕДИ СЕРП  •  ЦЕПЛЯЙСЯ ЗА КРАЯ"
+
+
+func _restart_run() -> void:
+    active_checkpoint = 0
+    checkpoint_label.text = "СТАРТ  •  КП 0"
+    _reset_player()
+
+func _check_finish() -> void:
+    if finished:
+        return
+    if player.global_position.distance_to(finish_position) < 1.1:
+        finished = true
+        player.release_pointer()
+        win_label.text = "ВЕРШИНА!\nРекорд: %d м" % int(best_height)
+        win_overlay.visible = true
+        _save_record()
+
+func _build_win_overlay(hud: CanvasLayer) -> void:
+    win_overlay = Control.new()
+    win_overlay.name = "WinOverlay"
+    win_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    win_overlay.visible = false
+    win_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+    hud.add_child(win_overlay)
+
+    var dim := ColorRect.new()
+    dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    dim.color = Color(0.008, 0.018, 0.028, 0.72)
+    win_overlay.add_child(dim)
+
+    var card := PanelContainer.new()
+    card.anchor_left = 0.5
+    card.anchor_right = 0.5
+    card.anchor_top = 0.5
+    card.anchor_bottom = 0.5
+    card.offset_left = -190
+    card.offset_right = 190
+    card.offset_top = -145
+    card.offset_bottom = 145
+    card.add_theme_stylebox_override("panel", _hud_panel_style(Color(0.045, 0.075, 0.09, 0.99)))
+    win_overlay.add_child(card)
+
+    var box := VBoxContainer.new()
+    box.alignment = BoxContainer.ALIGNMENT_CENTER
+    box.add_theme_constant_override("separation", 15)
+    card.add_child(box)
+
+    win_label = Label.new()
+    win_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    win_label.add_theme_font_size_override("font_size", 28)
+    win_label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.60))
+    box.add_child(win_label)
+
+    var again := Button.new()
+    again.text = "НАЧАТЬ ЗАНОВО"
+    again.custom_minimum_size = Vector2(300, 54)
+    _style_hud_button(again, Color(0.08, 0.42, 0.36, 1.0))
+    again.pressed.connect(_restart_run)
+    box.add_child(again)
+
+    var stay := Button.new()
+    stay.text = "ОСТАТЬСЯ НА ВЕРШИНЕ"
+    stay.custom_minimum_size = Vector2(300, 48)
+    _style_hud_button(stay, Color(0.22, 0.14, 0.11, 1.0))
+    stay.pressed.connect(func(): win_overlay.visible = false)
+    box.add_child(stay)
+
+func _load_record() -> void:
+    var cfg := ConfigFile.new()
+    if cfg.load(SAVE_PATH) == OK:
+        best_height = float(cfg.get_value("progress", "best_height", 0.0))
+
+func _save_record() -> void:
+    var cfg := ConfigFile.new()
+    cfg.set_value("progress", "best_height", best_height)
+    cfg.save(SAVE_PATH)
+
+func _notification(what: int) -> void:
+    if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST:
+        _save_record()

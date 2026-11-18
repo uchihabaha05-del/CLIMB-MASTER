@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="110" height="52" viewBox="-24 -26 110 52">
+<defs><linearGradient id="skinV" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f0c7a4"/><stop offset="0.55" stop-color="#d9a07a"/><stop offset="1" stop-color="#b87c58"/></linearGradient></defs>
+<path d="M0,-18 C24,-22 54,-17 78,-13 L78,13 C54,16 24,20 0,21 Z" fill="url(#skinV)" stroke="#7a4a30" stroke-width="2"/>
+<path d="M14,-12 C34,-16 52,-12 66,-8" fill="none" stroke="#fbdcc0" stroke-width="5" stroke-linecap="round" opacity="0.4"/>
+<circle cx="0" cy="1" r="20" fill="url(#skinV)"/>
+</svg>

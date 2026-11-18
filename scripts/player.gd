@@ -1,16 +1,38 @@
 extends CharacterBody3D
 
-# Tuned for a deliberately difficult, momentum-based climbing game.
+# ---------------------------------------------------------------------------
+# Physics tuning (momentum-based climbing)
+# ---------------------------------------------------------------------------
 const GRAVITY := 19.0
-const MOVE_ACCEL := 8.0
-const AIR_STEER := 3.2
 const MAX_HORIZONTAL_SPEED := 7.5
-const SCYTHE_REACH := 5.0
-const HOOK_SPRING := 34.0
-const HOOK_DAMPING := 7.5
-const MAX_HOOK_ACCEL := 42.0
-const PUMP_ACCEL := 13.0
+const MAX_RISE_SPEED := 16.0
+const MAX_FALL_SPEED := 15.0
+const FLOOR_FRICTION := 14.0      # m/s^2, no more "ice"
+const AIR_DRAG := 0.35
+const MAX_SWING_SPEED := 10.0     # rad/s the blade can follow the finger
+const SCYTHE_STEP := 0.06         # rad per swept collision sub-step
+const PUSH_GAIN := 4.2            # m/s per metre of blade-contact travel
+const SCRAPE_GRIP := 0.45         # how much dragging along a surface moves the pot
+const MAX_PUSH_PER_FRAME := 2.6   # m/s
+const HAZARD_KNOCKBACK := 8.0
+const HAZARD_COOLDOWN := 0.4
 const PLAY_PLANE_Z := 0.0
+const START_ANGLE := -0.72
+const SCYTHE_Z := -0.08           # scythe is drawn behind the character art, under the fist
+const IDLE_HINT := "Веди серп пальцем по экрану. Упирайся лезвием в препятствия, чтобы отталкиваться."
+
+# ---------------------------------------------------------------------------
+# Character art (assets/character/*.svg, all authored on a 600x700 canvas)
+# ---------------------------------------------------------------------------
+const PART_DIR := "res://assets/character/"
+const PX := 0.00335
+const ART_CENTER := Vector2(300.0, 350.0)
+const ART_BASE_Y := 0.755         # pot feet line up with the collision cylinder
+const ARM_L1 := 78.0 * PX         # upper arm length
+const ARM_L2 := 84.0 * PX         # elbow -> fist centre
+const SHOULDER_R := Vector3((378.0 - 300.0) * PX, ART_BASE_Y + (350.0 - 325.0) * PX, 0.0)
+const SHOULDER_L := Vector3((222.0 - 300.0) * PX, ART_BASE_Y + (350.0 - 325.0) * PX, 0.0)
+const LEFT_HAND_REST := Vector3((140.0 - 300.0) * PX, ART_BASE_Y - (430.0 - 350.0) * PX, 0.0)
 
 var hammer_pivot: Node3D
 var hammer_head: Node3D
@@ -18,150 +40,130 @@ var scythe_contact_valid := false
 var scythe_contact_point := Vector3.ZERO
 var scythe_contact_collider: Object = null
 var scythe_probe := SphereShape3D.new()
-var aim_angle := -0.72
-var aim_elevation := 0.0
+var scythe_points: Array[Vector3] = [
+    Vector3(0.0, 0.65, 0.0), Vector3(0.0, 1.20, 0.0), Vector3(0.0, 1.75, 0.0), Vector3(0.0, 2.30, 0.0),
+    Vector3(0.22, 2.60, 0.0), Vector3(0.55, 2.80, 0.0), Vector3(0.90, 3.08, 0.0), Vector3(1.12, 3.45, 0.0),
+    Vector3(1.20, 3.80, 0.0), Vector3(1.15, 4.15, 0.0), Vector3(0.95, 4.40, 0.0), Vector3(0.70, 4.50, 0.0)
+]
+var aim_angle := START_ANGLE       # current blade angle (what you see / collide with)
+var target_angle := START_ANGLE    # where the finger points
 var dragging := false
-var pointer_position := Vector2.ZERO
-var last_aim_angle := -0.72
-var swing_delta := 0.0
-var imported_skeleton: Skeleton3D
-var posed_bones: Array[int] = []
-var hook_feedback := "Веди серп пальцем по экрану. Упирайся лезвием в препятствия, чтобы отталкиваться."
+var touch_index := -1              # -1 none, -2 mouse, >=0 touch finger
+var ui_blockers: Array = []        # Controls that must not start a swing (set by main.gd)
+var hazard_cooldown := 0.0
+var hook_feedback := IDLE_HINT
+var _scythe_query := PhysicsShapeQueryParameters3D.new()
+var _time := 0.0
+var _arm_r: Dictionary = {}
+var _arm_l: Dictionary = {}
 
 func _ready() -> void:
     global_position.z = PLAY_PLANE_Z
     _make_player_collision()
+    scythe_probe.radius = 0.16
+    _scythe_query.shape = scythe_probe
+    _scythe_query.collide_with_bodies = true
+    _scythe_query.collide_with_areas = false
+    _scythe_query.exclude = [get_rid()]
 
-    # Use the newly uploaded illustrated character-in-a-pot asset.
-    # It is a front-facing 2D character plate inside the 3D world; the scythe,
-    # collision and climbing physics remain fully 3D.
-    var character_texture := load("res://assets/character.svg") as Texture2D
-    if character_texture != null:
-        var character_sprite := Sprite3D.new()
-        character_sprite.name = "UploadedCharacter"
-        character_sprite.texture = character_texture
-        character_sprite.pixel_size = 0.00335
-        character_sprite.position = Vector3(0.0, 0.86, 0.12)
-        character_sprite.alpha_cut = SpriteBase3D.ALPHA_CUT_DISCARD
-        character_sprite.shaded = true
-        add_child(character_sprite)
-    else:
-        push_warning("Uploaded character SVG could not be loaded; using the 3D fallback.")
-        var pot_loaded := _add_imported_model("res://assets/models/cauldron.glb", 1.72, "ImportedCauldron")
-        if not pot_loaded:
-            _make_fallback_pot()
-        var human_loaded := _add_imported_model("res://assets/models/male-base-mesh-base_male.glb", 1.58, "ImportedClimber")
-        if human_loaded:
-            var human := get_node("ImportedClimber") as Node3D
-            human.position = Vector3(0.0, -0.08, 0.12)
-            human.rotation_degrees = Vector3(0.0, 180.0, 0.0)
-            _apply_seated_pose(human)
-        else:
-            _make_fallback_human()
+    if not _build_character_art():
+        push_warning("Character SVG parts not found in " + PART_DIR + "; using primitive fallback.")
+        _make_fallback_pot()
+        _make_fallback_human()
 
-    scythe_probe.radius = 0.18
     _make_scythe()
+    reset_hammer()
 
 
-func _apply_seated_pose(root: Node) -> void:
-    imported_skeleton = _find_skeleton(root)
-    if imported_skeleton == null:
-        push_warning("Imported climber has no Skeleton3D; using its original bind pose.")
-        return
+# ---------------------------------------------------------------------------
+# Character art + rigged arms
+# ---------------------------------------------------------------------------
+func _make_part(file: String, origin_px: Vector2, z: float) -> Sprite3D:
+    var tex := load(PART_DIR + file) as Texture2D
+    if tex == null:
+        return null
+    var sprite := Sprite3D.new()
+    sprite.name = file.get_basename()
+    sprite.texture = tex
+    sprite.pixel_size = PX
+    sprite.centered = false
+    sprite.offset = -origin_px         # texture pixel `origin_px` sits on the node origin
+    sprite.shaded = false
+    sprite.alpha_cut = SpriteBase3D.ALPHA_CUT_OPAQUE_PREPASS
+    sprite.position.z = z
+    return sprite
 
-    # Bone names differ between model exporters, so identify common humanoid names.
-    for bone_index in range(imported_skeleton.get_bone_count()):
-        var bone_name := imported_skeleton.get_bone_name(bone_index).to_lower().replace("_", "").replace(" ", "")
-        var pose := Quaternion.IDENTITY
-        var matched := false
+func _make_arm(sgn: float) -> Dictionary:
+    var upper := _make_part("arm_upper.svg", Vector2(24.0, 26.0), 0.0)
+    var fore := _make_part("arm_fore.svg", Vector2(18.0, 20.0), 0.002)
+    var hand := _make_part("arm_hand.svg", Vector2(26.0, 22.0), 0.002)
+    if upper == null or fore == null or hand == null:
+        return {}
+    var holder := Node3D.new()
+    holder.name = "ArmRight" if sgn > 0.0 else "ArmLeft"
+    holder.position = (SHOULDER_R if sgn > 0.0 else SHOULDER_L) + Vector3(0.0, 0.0, 0.025)
+    holder.scale = Vector3(sgn, 1.0, 1.0)   # left arm is the mirrored right arm
+    add_child(holder)
+    holder.add_child(upper)
+    fore.position = Vector3(ARM_L1, 0.0, 0.002)
+    upper.add_child(fore)
+    hand.position = Vector3(ARM_L2, 0.0, 0.002)
+    fore.add_child(hand)
+    return {"upper": upper, "fore": fore, "sgn": sgn}
 
-        if bone_name.contains("leftupperarm") or bone_name.contains("upperarm.l") or bone_name.contains("upperarml") or bone_name.contains("leftarm"):
-            pose = Quaternion(Vector3.FORWARD, deg_to_rad(-48.0))
-            matched = true
-        elif bone_name.contains("rightupperarm") or bone_name.contains("upperarm.r") or bone_name.contains("upperarmr") or bone_name.contains("rightarm"):
-            pose = Quaternion(Vector3.FORWARD, deg_to_rad(48.0))
-            matched = true
-        elif bone_name.contains("leftforearm") or bone_name.contains("lowerarm.l") or bone_name.contains("lowerarml") or bone_name.contains("leftlowerarm"):
-            pose = Quaternion(Vector3.FORWARD, deg_to_rad(-72.0))
-            matched = true
-        elif bone_name.contains("rightforearm") or bone_name.contains("lowerarm.r") or bone_name.contains("lowerarmr") or bone_name.contains("rightlowerarm"):
-            pose = Quaternion(Vector3.FORWARD, deg_to_rad(72.0))
-            matched = true
-        elif bone_name.contains("leftupleg") or bone_name.contains("leftthigh") or bone_name.contains("thigh.l") or bone_name.contains("thighl"):
-            pose = Quaternion(Vector3.RIGHT, deg_to_rad(-72.0))
-            matched = true
-        elif bone_name.contains("rightupleg") or bone_name.contains("rightthigh") or bone_name.contains("thigh.r") or bone_name.contains("thighr"):
-            pose = Quaternion(Vector3.RIGHT, deg_to_rad(-72.0))
-            matched = true
-        elif bone_name.contains("leftleg") or bone_name.contains("calf.l") or bone_name.contains("calfl") or bone_name.contains("leftcalf"):
-            pose = Quaternion(Vector3.RIGHT, deg_to_rad(92.0))
-            matched = true
-        elif bone_name.contains("rightleg") or bone_name.contains("calf.r") or bone_name.contains("calfr") or bone_name.contains("rightcalf"):
-            pose = Quaternion(Vector3.RIGHT, deg_to_rad(92.0))
-            matched = true
-
-        if matched:
-            imported_skeleton.set_bone_pose_rotation(bone_index, pose)
-            posed_bones.append(bone_index)
-
-func _find_skeleton(node: Node) -> Skeleton3D:
-    if node is Skeleton3D:
-        return node as Skeleton3D
-    for child in node.get_children():
-        var found := _find_skeleton(child)
-        if found != null:
-            return found
-    return null
-
-func _add_imported_model(path: String, target_size: float, node_name: String) -> bool:
-    if not ResourceLoader.exists(path):
-        push_warning("Model not found: " + path)
+func _build_character_art() -> bool:
+    var layers := [
+        ["pot_back.svg", -0.02],
+        ["body.svg", 0.0],
+        ["pot_front.svg", 0.05]
+    ]
+    var made: Array[Sprite3D] = []
+    for layer in layers:
+        var sprite := _make_part(layer[0], ART_CENTER, float(layer[1]))
+        if sprite == null:
+            return false
+        sprite.position.y = ART_BASE_Y
+        made.append(sprite)
+    _arm_r = _make_arm(1.0)
+    _arm_l = _make_arm(-1.0)
+    if _arm_r.is_empty() or _arm_l.is_empty():
         return false
-    var packed := load(path) as PackedScene
-    if packed == null:
-        push_warning("Could not load model scene: " + path)
-        return false
-    var instance := packed.instantiate() as Node3D
-    if instance == null:
-        push_warning("Model root is not Node3D: " + path)
-        return false
-    instance.name = node_name
-    add_child(instance)
-    var bounds := _measure_model_bounds(instance, Transform3D.IDENTITY)
-    if bounds.size.length() < 0.001:
-        instance.queue_free()
-        push_warning("Model has no visible mesh bounds: " + path)
-        return false
-    var largest_horizontal := maxf(bounds.size.x, bounds.size.z)
-    var reference_size := largest_horizontal if node_name == "ImportedCauldron" else bounds.size.y
-    var scale_factor := target_size / maxf(reference_size, 0.001)
-    instance.scale = Vector3.ONE * scale_factor
-    if node_name == "ImportedCauldron":
-        # Align the imported pot's bottom with the original collision body.
-        instance.position.y = -0.30 - bounds.position.y * scale_factor
-    else:
-        # The model is scaled to a human-sized height; the pot hides the legs.
-        instance.position.y = -0.12
+    for sprite in made:
+        add_child(sprite)
     return true
 
-func _measure_model_bounds(node: Node, parent_transform: Transform3D) -> AABB:
-    var current_transform := parent_transform
-    if node is Node3D:
-        current_transform = parent_transform * (node as Node3D).transform
-    var combined := AABB()
-    var has_bounds := false
-    if node is MeshInstance3D and node.mesh != null:
-        combined = current_transform * node.mesh.get_aabb()
-        has_bounds = true
-    for child in node.get_children():
-        var child_bounds := _measure_model_bounds(child, current_transform)
-        if child_bounds.size.length() > 0.001:
-            if has_bounds:
-                combined = combined.merge(child_bounds)
-            else:
-                combined = child_bounds
-                has_bounds = true
-    return combined
+# Two-bone IK. Everything is solved in the arm's local frame (x along the arm side,
+# y up); the left arm lives under a mirrored (scale.x = -1) holder, so `sgn` flips x.
+func _solve_arm(arm: Dictionary, shoulder: Vector3, target: Vector3) -> void:
+    if arm.is_empty():
+        return
+    var sgn: float = arm["sgn"]
+    var lx := (target.x - shoulder.x) * sgn
+    var ly := target.y - shoulder.y
+    var d := clampf(Vector2(lx, ly).length(), absf(ARM_L1 - ARM_L2) + 0.01, ARM_L1 + ARM_L2 - 0.005)
+    var ang := atan2(ly, lx)
+    var cos_a := clampf((ARM_L1 * ARM_L1 + d * d - ARM_L2 * ARM_L2) / (2.0 * ARM_L1 * d), -1.0, 1.0)
+    var a1 := ang - acos(cos_a)               # elbow bends downwards
+    var elbow := Vector2(cos(a1), sin(a1)) * ARM_L1
+    var tip := Vector2(cos(ang), sin(ang)) * d
+    var a2 := wrapf((tip - elbow).angle() - a1, -PI, PI)
+    (arm["upper"] as Node3D).rotation.z = a1
+    (arm["fore"] as Node3D).rotation.z = a2
+
+func _update_arms() -> void:
+    _solve_arm(_arm_r, SHOULDER_R, _hand_local(aim_angle))
+    var rest := LEFT_HAND_REST + Vector3(0.0, sin(_time * 1.7) * 0.008, 0.0)
+    _solve_arm(_arm_l, SHOULDER_L, rest)
+
+# The fist travels on a small ellipse around the shoulder, towards where the blade points.
+func _hand_local(angle: float) -> Vector3:
+    var dir := Vector2(-sin(angle), cos(angle))
+    return SHOULDER_R + Vector3(0.10 + dir.x * 0.30, 0.10 + dir.y * 0.20, 0.0)
+
+func _update_pivot() -> void:
+    if is_instance_valid(hammer_pivot):
+        hammer_pivot.position = _hand_local(aim_angle) + Vector3(0.0, 0.0, SCYTHE_Z)
+        hammer_pivot.rotation = Vector3(0.0, 0.0, aim_angle)
 
 func _make_fallback_pot() -> void:
     var pot := MeshInstance3D.new()
@@ -247,7 +249,6 @@ func _make_fallback_human() -> void:
 func _make_scythe() -> void:
     hammer_pivot = Node3D.new()
     hammer_pivot.name = "ScythePivot"
-    hammer_pivot.position = Vector3(0.42, 0.98, -0.04)
     add_child(hammer_pivot)
 
     # A single tapered ash-wood haft, with a darker end grain and metal collar.
@@ -390,160 +391,208 @@ func _make_scythe() -> void:
     hammer_pivot.add_child(hammer_head)
 
 
-func _scythe_sample_points() -> Array[Vector3]:
-    return [
-        Vector3(0.0, 0.65, 0.0),
-        Vector3(0.0, 1.15, 0.0),
-        Vector3(0.0, 1.70, 0.0),
-        Vector3(0.0, 2.15, 0.0),
-        Vector3(0.22, 2.18, 0.0),
-        Vector3(0.38, 2.25, 0.0),
-        Vector3(0.56, 2.36, 0.0),
-        Vector3(0.74, 2.48, 0.0),
-        Vector3(0.90, 2.61, 0.0),
-        Vector3(1.03, 2.76, 0.0),
-        Vector3(1.12, 2.91, 0.0),
-        Vector3(1.18, 3.08, 0.0),
-        Vector3(1.18, 3.22, 0.0),
-        Vector3(1.16, 3.37, 0.0),
-        Vector3(0.98, 3.58, 0.0),
-        Vector3(0.72, 3.72, 0.0)
-    ]
-
-func _query_scythe_collision(angle: float) -> Dictionary:
+# ---------------------------------------------------------------------------
+# Scythe collision (swept, so the blade can't tunnel through walls)
+# ---------------------------------------------------------------------------
+func _probe_scythe(angle: float) -> Dictionary:
     var space := get_world_3d().direct_space_state
-    var local_basis := Basis(Vector3(0.0, 0.0, 1.0), angle)
-    for local_point in _scythe_sample_points():
-        var world_point := hammer_pivot.global_position + local_basis * local_point
-        var query := PhysicsShapeQueryParameters3D.new()
-        query.shape = scythe_probe
-        query.transform = Transform3D(Basis.IDENTITY, world_point)
-        query.exclude = [get_rid()]
-        query.collide_with_bodies = true
-        query.collide_with_areas = false
-        var overlaps := space.intersect_shape(query, 4)
-        if not overlaps.is_empty():
-            var contact := space.get_rest_info(query)
-            if contact.is_empty():
-                var candidate: Dictionary = overlaps[0]
-                contact = {"point": world_point, "collider": candidate.get("collider"), "normal": (world_point - hammer_pivot.global_position).normalized()}
-            var surface_normal: Vector3 = contact.get("normal", Vector3.ZERO)
-            if surface_normal.length_squared() > 0.01:
-                return contact
-    return {}
+    var hand := global_position + _hand_local(angle)
+    hand.z = PLAY_PLANE_Z
+    var rot := Basis(Vector3.BACK, angle)
+    var result := {"hits": 0}
+    for local_point in scythe_points:
+        var world_point := hand + rot * local_point
+        _scythe_query.transform = Transform3D(Basis.IDENTITY, world_point)
+        var overlaps := space.intersect_shape(_scythe_query, 1)
+        if overlaps.is_empty():
+            continue
+        result["hits"] = int(result["hits"]) + 1
+        if result.has("point"):
+            continue
+        var info := space.get_rest_info(_scythe_query)
+        var normal := (world_point - hand).normalized()
+        var point := world_point
+        var collider = (overlaps[0] as Dictionary).get("collider")
+        if not info.is_empty():
+            normal = info.get("normal", normal)
+            point = info.get("point", point)
+        result["point"] = point
+        result["normal"] = normal
+        result["collider"] = collider
+    return result
 
-func _try_lock_scythe_angle(previous_angle: float, next_angle: float) -> bool:
-    var delta_angle := next_angle - previous_angle
-    var steps := maxi(1, int(ceil(absf(delta_angle) / 0.045)))
-    for step in range(1, steps + 1):
-        var sample_angle := lerpf(previous_angle, next_angle, float(step) / float(steps))
-        var contact := _query_scythe_collision(sample_angle)
-        if not contact.is_empty():
-            scythe_contact_valid = true
-            scythe_contact_point = contact.get("point", hammer_pivot.global_position)
-            scythe_contact_point.z = PLAY_PLANE_Z
-            scythe_contact_collider = contact.get("collider")
-            return false
+func _update_scythe(delta: float) -> void:
     scythe_contact_valid = false
     scythe_contact_collider = null
-    return true
+    if not dragging:
+        if hazard_cooldown <= 0.0:
+            hook_feedback = IDLE_HINT
+        return
+
+    var diff := wrapf(target_angle - aim_angle, -PI, PI)
+    var max_step := MAX_SWING_SPEED * delta
+    var step_total := clampf(diff, -max_step, max_step)
+    var current := _probe_scythe(aim_angle)
+    var hits_now: int = current["hits"]
+    var contact: Dictionary = {}
+
+    if absf(step_total) < 0.0005:
+        if hits_now > 0:
+            contact = current
+    else:
+        var steps := maxi(1, ceili(absf(step_total) / SCYTHE_STEP))
+        var sub := step_total / float(steps)
+        for i in range(steps):
+            var nxt := _probe_scythe(aim_angle + sub)
+            var nxt_hits: int = nxt["hits"]
+            if nxt_hits > hits_now:
+                contact = nxt          # blocked: the finger keeps pushing, the blade doesn't pass
+                break
+            aim_angle += sub
+            hits_now = nxt_hits
+            contact = nxt if nxt_hits > 0 else {}
+        aim_angle = wrapf(aim_angle, -PI, PI)
+
+    _update_pivot()
+    if contact.is_empty():
+        if hazard_cooldown <= 0.0:
+            hook_feedback = "Коснись экрана и веди серп к камню."
+        return
+
+    scythe_contact_valid = true
+    scythe_contact_point = contact["point"]
+    scythe_contact_collider = contact.get("collider")
+    if absf(step_total) < 0.0005:
+        hook_feedback = "Упёрся. Веди палец, чтобы оттолкнуться."
+    else:
+        hook_feedback = "Есть упор! Веди серп дальше, чтобы подняться."
+        _apply_scythe_push(contact, step_total)
+
+# Reaction force: the blade can't move into the surface, so the pot is pushed away from it,
+# and dragging the blade along a surface pulls the pot the opposite way.
+func _apply_scythe_push(contact: Dictionary, step: float) -> void:
+    var collider: Object = contact.get("collider")
+    if collider is Node and (collider as Node).is_in_group("climb_hazard"):
+        return
+    var hand := global_position + _hand_local(aim_angle)
+    var point: Vector3 = contact["point"]
+    var rel := point - hand
+    rel.z = 0.0
+    var dist := rel.length()
+    if dist < 0.05:
+        return
+    var normal: Vector3 = contact["normal"]
+    normal.z = 0.0
+    if normal.length_squared() < 0.01:
+        normal = -rel
+    normal = normal.normalized()
+    if normal.dot(-rel) < 0.0:        # make the normal point from the surface back to the hand
+        normal = -normal
+    var motion := Vector3(-rel.y, rel.x, 0.0).normalized() * signf(step)
+    var into := maxf(0.0, -motion.dot(normal))
+    var slide := motion - normal * motion.dot(normal)
+    var push := normal * into - slide * SCRAPE_GRIP
+    var impulse := push * (absf(step) * dist) * PUSH_GAIN
+    if impulse.length() > MAX_PUSH_PER_FRAME:
+        impulse = impulse.normalized() * MAX_PUSH_PER_FRAME
+    velocity += impulse
+
+
+# ---------------------------------------------------------------------------
+# Input: one finger drives the scythe; extra fingers and HUD buttons are ignored
+# ---------------------------------------------------------------------------
+func release_pointer() -> void:
+    dragging = false
+    touch_index = -1
 
 func reset_hammer() -> void:
-    aim_angle = -0.72
-    last_aim_angle = aim_angle
-    swing_delta = 0.0
-    aim_elevation = 0.0
-    dragging = false
+    aim_angle = START_ANGLE
+    target_angle = START_ANGLE
+    release_pointer()
     scythe_contact_valid = false
     scythe_contact_collider = null
-    hammer_pivot.rotation = Vector3.ZERO
-    _update_hammer_pose()
+    hook_feedback = IDLE_HINT
+    _update_pivot()
+    _update_arms()
+
+func _is_over_ui(pos: Vector2) -> bool:
+    for c in ui_blockers:
+        if is_instance_valid(c) and c is Control:
+            var ctrl := c as Control
+            if ctrl.is_visible_in_tree() and ctrl.get_global_rect().has_point(pos):
+                return true
+    return false
+
+func _begin_aim(pos: Vector2, index: int) -> void:
+    touch_index = index
+    dragging = true
+    _aim_from_pointer(pos)
 
 func _input(event: InputEvent) -> void:
-    # Read touch globally before GUI controls can consume it.
     if event is InputEventScreenTouch:
-        dragging = event.pressed
-        if dragging:
-            pointer_position = event.position
-            _aim_from_pointer(pointer_position)
-    elif event is InputEventScreenDrag and dragging:
-        pointer_position = event.position
-        _aim_from_pointer(pointer_position)
+        if event.pressed:
+            if touch_index == -1 and not _is_over_ui(event.position):
+                _begin_aim(event.position, event.index)
+        elif event.index == touch_index:
+            release_pointer()
+    elif event is InputEventScreenDrag:
+        if event.index == touch_index:
+            _aim_from_pointer(event.position)
     elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-        dragging = event.pressed
-        if dragging:
-            pointer_position = event.position
-            _aim_from_pointer(pointer_position)
-    elif event is InputEventMouseMotion and dragging:
-        pointer_position = event.position
-        _aim_from_pointer(pointer_position)
+        if event.device == InputEvent.DEVICE_ID_EMULATION:
+            return                      # emulated from touch; the touch event already handled it
+        if event.pressed:
+            if touch_index == -1 and not _is_over_ui(event.position):
+                _begin_aim(event.position, -2)
+        elif touch_index == -2:
+            release_pointer()
+    elif event is InputEventMouseMotion and touch_index == -2:
+        _aim_from_pointer(event.position)
 
 func _aim_from_pointer(screen_position: Vector2) -> void:
     var active_camera := get_viewport().get_camera_3d()
-    if active_camera == null or not is_instance_valid(hammer_pivot):
+    if active_camera == null:
         return
-    var pivot_screen := active_camera.unproject_position(hammer_pivot.global_position)
-    var pointer_vector := screen_position - pivot_screen
-    if pointer_vector.length_squared() < 16.0:
+    # Aim from the (fixed) shoulder, so the angle doesn't depend on the moving fist.
+    var origin := active_camera.unproject_position(global_position + SHOULDER_R)
+    var v := screen_position - origin
+    if v.length_squared() < 16.0:
         return
-    var next_angle := clampf(atan2(-pointer_vector.y, pointer_vector.x) - PI * 0.5, -PI, PI)
-    swing_delta = clampf(swing_delta + wrapf(next_angle - aim_angle, -PI, PI), -0.85, 0.85)
-    last_aim_angle = aim_angle
-    aim_angle = next_angle
-    _update_hammer_pose()
+    target_angle = wrapf(atan2(-v.y, v.x) - PI * 0.5, -PI, PI)
 
-func _update_hammer_pose() -> void:
-    if is_instance_valid(hammer_pivot):
-        hammer_pivot.rotation = Vector3(0.0, 0.0, aim_angle)
 
+# ---------------------------------------------------------------------------
+# Main physics loop
+# ---------------------------------------------------------------------------
 func _physics_process(delta: float) -> void:
+    _time += delta
     if not is_on_floor():
         velocity.y -= GRAVITY * delta
 
-    # The held blade pushes against collision surfaces and transfers the reaction force to the cauldron.
-    scythe_contact_valid = false
-    if dragging and is_instance_valid(hammer_pivot):
-        var contact := _query_scythe_collision(aim_angle)
-        if not contact.is_empty():
-            scythe_contact_valid = true
-            scythe_contact_point = contact.get("point", hammer_pivot.global_position)
-            var normal: Vector3 = contact.get("normal", (scythe_contact_point - hammer_pivot.global_position).normalized())
-            normal.z = 0.0
-            normal = normal.normalized()
-            if normal.length_squared() > 0.1:
-                # Surface reaction lifts or swings the whole cauldron.
-                var contact_strength := clampf(1.0 + absf(swing_delta) * 2.4, 1.0, 2.6)
-                var lever_arm := scythe_contact_point - global_position
-                var torque_direction := Vector3(-lever_arm.y, lever_arm.x, 0.0).normalized()
-                var push_direction := normal
-                if torque_direction.length_squared() > 0.1 and absf(swing_delta) > 0.015:
-                    push_direction = (normal + torque_direction * signf(swing_delta) * 0.42).normalized()
-                velocity += push_direction * MAX_HOOK_ACCEL * contact_strength * delta
-                if torque_direction.length_squared() > 0.1:
-                    velocity += torque_direction * clampf(swing_delta * PUMP_ACCEL, -3.2, 3.2)
-                swing_delta = 0.0
-                # Keep a small upward component when bracing against a near-vertical wall.
-                if absf(normal.y) < 0.28:
-                    velocity.y += 5.5 * delta
-            hook_feedback = "Есть упор! Веди серп дальше, чтобы подняться."
-        else:
-            hook_feedback = "Коснись экрана и веди серп к камню."
-            swing_delta = move_toward(swing_delta, 0.0, 5.5 * delta)
-    else:
-        swing_delta = move_toward(swing_delta, 0.0, 5.5 * delta)
+    _update_scythe(delta)
+
     if is_on_floor():
-        velocity.x = move_toward(velocity.x, 0.0, 2.4 * delta)
+        velocity.x = move_toward(velocity.x, 0.0, FLOOR_FRICTION * delta)
+    else:
+        velocity.x = move_toward(velocity.x, 0.0, AIR_DRAG * delta)
     velocity.x = clampf(velocity.x, -MAX_HORIZONTAL_SPEED, MAX_HORIZONTAL_SPEED)
-    velocity.y = clampf(velocity.y, -15.0, 18.0)
+    velocity.y = clampf(velocity.y, -MAX_FALL_SPEED, MAX_RISE_SPEED)
     velocity.z = 0.0
     move_and_slide()
     velocity.z = 0.0
     global_position.z = PLAY_PLANE_Z
 
-    for collision_index in range(get_slide_collision_count()):
-        var collision := get_slide_collision(collision_index)
-        var collider := collision.get_collider()
-        if collider is Node and (collider as Node).is_in_group("climb_hazard"):
-            velocity += collision.get_normal() * 3.5
-            hook_feedback = "Опасное препятствие! Обойди его серпом."
-            break
+    hazard_cooldown = maxf(0.0, hazard_cooldown - delta)
+    if hazard_cooldown <= 0.0:
+        for collision_index in range(get_slide_collision_count()):
+            var collision := get_slide_collision(collision_index)
+            var collider := collision.get_collider()
+            if collider is Node and (collider as Node).is_in_group("climb_hazard"):
+                var n := collision.get_normal()
+                n.z = 0.0
+                velocity += n.normalized() * HAZARD_KNOCKBACK + Vector3.UP * 2.0
+                hazard_cooldown = HAZARD_COOLDOWN
+                hook_feedback = "Опасное препятствие! Обойди его серпом."
+                break
+
+    _update_arms()
