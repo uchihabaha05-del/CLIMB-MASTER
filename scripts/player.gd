@@ -71,6 +71,65 @@ func _make_pot() -> void:
     head.material_override = skin
     add_child(head)
 
+    var neck := MeshInstance3D.new()
+    var neck_mesh := CylinderMesh.new()
+    neck_mesh.top_radius = 0.19
+    neck_mesh.bottom_radius = 0.23
+    neck_mesh.height = 0.34
+    neck.mesh = neck_mesh
+    neck.position = Vector3(0, 0.66, 0)
+    neck.material_override = skin
+    add_child(neck)
+
+    # Simple facial features make the climber read as a person from the camera.
+    var eye_material := StandardMaterial3D.new()
+    eye_material.albedo_color = Color(0.055, 0.045, 0.04)
+    eye_material.roughness = 0.42
+    for side in [-1.0, 1.0]:
+        var ear := MeshInstance3D.new()
+        var ear_mesh := SphereMesh.new()
+        ear_mesh.radius = 0.105
+        ear_mesh.height = 0.21
+        ear.mesh = ear_mesh
+        ear.position = Vector3(side * 0.405, 0.91, 0.015)
+        ear.material_override = skin
+        add_child(ear)
+
+        var eye := MeshInstance3D.new()
+        var eye_mesh := SphereMesh.new()
+        eye_mesh.radius = 0.052
+        eye_mesh.height = 0.075
+        eye.mesh = eye_mesh
+        eye.position = Vector3(side * 0.145, 0.99, 0.365)
+        eye.material_override = eye_material
+        add_child(eye)
+
+    var nose := MeshInstance3D.new()
+    var nose_mesh := SphereMesh.new()
+    nose_mesh.radius = 0.09
+    nose_mesh.height = 0.16
+    nose.mesh = nose_mesh
+    nose.scale = Vector3(0.72, 0.72, 1.2)
+    nose.position = Vector3(0, 0.88, 0.405)
+    nose.material_override = skin
+    add_child(nose)
+
+    # Rolled metal handles on both sides of the pot.
+    for side in [-1.0, 1.0]:
+        var handle := MeshInstance3D.new()
+        var handle_mesh := TorusMesh.new()
+        handle_mesh.inner_radius = 0.105
+        handle_mesh.outer_radius = 0.145
+        handle.mesh = handle_mesh
+        handle.position = Vector3(side * 0.82, 0.25, 0.0)
+        handle.rotation.y = PI * 0.5
+        var handle_mat := StandardMaterial3D.new()
+        handle_mat.albedo_color = Color(0.28, 0.31, 0.34)
+        handle_mat.metallic = 0.88
+        handle_mat.roughness = 0.24
+        handle.material_override = handle_mat
+        add_child(handle)
+
 func _make_hammer() -> void:
     hammer_pivot = Node3D.new()
     hammer_pivot.position = Vector3(0.48, 0.95, 0)
@@ -89,6 +148,20 @@ func _make_hammer() -> void:
     wood.roughness = 0.82
     handle.material_override = wood
     hammer_pivot.add_child(handle)
+
+    var grip_material := StandardMaterial3D.new()
+    grip_material.albedo_color = Color(0.12, 0.075, 0.045)
+    grip_material.roughness = 0.94
+    for band_y in [0.48, 0.58, 0.68]:
+        var grip := MeshInstance3D.new()
+        var grip_mesh := TorusMesh.new()
+        grip_mesh.inner_radius = 0.067
+        grip_mesh.outer_radius = 0.092
+        grip.mesh = grip_mesh
+        grip.position = Vector3(0, band_y, 0)
+        grip.rotation.x = PI * 0.5
+        grip.material_override = grip_material
+        hammer_pivot.add_child(grip)
 
     hammer_head = Node3D.new()
     hammer_head.position = Vector3(0, 2.02, 0)
