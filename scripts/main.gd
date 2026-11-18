@@ -19,6 +19,7 @@ var last_player_feedback := ""
 func _ready() -> void:
     _build_world()
     _build_photogrammetry_boulders()
+    _build_imported_obstacles()
     _build_industrial_structures()
     _build_checkpoints()
     _build_obstacles()
@@ -192,6 +193,75 @@ func _add_boulder_convex_collisions(node: Node) -> void:
         if child is not StaticBody3D:
             _add_boulder_convex_collisions(child)
 
+
+func _build_imported_obstacles() -> void:
+    # Authored obstacle pack: textured rock, rusty pipe and stone ledge.
+    var obstacle_scene := load("res://assets/models/obstacles.gltf") as PackedScene
+    if obstacle_scene == null:
+        push_warning("Could not load assets/models/obstacles.gltf")
+        return
+
+    var source_root := obstacle_scene.instantiate() as Node3D
+    if source_root == null:
+        push_warning("Obstacle asset root is not Node3D")
+        return
+    add_child(source_root)
+
+    var source_rock := _find_obstacle_mesh(source_root, "Rock")
+    var source_pipe := _find_obstacle_mesh(source_root, "Pipe")
+    var source_ledge := _find_obstacle_mesh(source_root, "Ledge")
+
+    if source_rock == null or source_pipe == null or source_ledge == null:
+        push_warning("Obstacle pack is missing Rock, Pipe or Ledge mesh")
+        source_root.queue_free()
+        return
+
+    # Stagger the imported pieces along the route so they form a deliberate climbing line.
+    var placements: Array[Dictionary] = [
+        {"source": source_rock, "position": Vector3(-3.15, 3.15, 0.1), "rotation": -0.18, "scale": 1.35, "name": "TexturedRock_A"},
+        {"source": source_pipe, "position": Vector3(0.0, 6.15, 0.15), "rotation": 0.10, "scale": 1.0, "name": "RustPipe_A"},
+        {"source": source_ledge, "position": Vector3(3.0, 8.95, 0.0), "rotation": -0.12, "scale": 1.15, "name": "StoneLedge_A"},
+        {"source": source_rock, "position": Vector3(3.25, 12.0, 0.1), "rotation": 0.22, "scale": 1.28, "name": "TexturedRock_B"},
+        {"source": source_pipe, "position": Vector3(0.0, 15.0, 0.15), "rotation": -0.14, "scale": 1.05, "name": "RustPipe_B"},
+        {"source": source_ledge, "position": Vector3(-3.0, 17.9, 0.0), "rotation": 0.15, "scale": 1.18, "name": "StoneLedge_B"}
+    ]
+
+    for item in placements:
+        var source := item["source"] as MeshInstance3D
+        if source.mesh == null:
+            continue
+        var body := StaticBody3D.new()
+        body.name = item["name"]
+        body.position = item["position"]
+        body.rotation.z = float(item["rotation"])
+        body.scale = Vector3.ONE * float(item["scale"])
+        body.add_to_group("imported_obstacle")
+
+        var visual := MeshInstance3D.new()
+        visual.name = "TexturedMesh"
+        visual.mesh = source.mesh
+        visual.material_override = source.material_override
+        # Preserve the imported orientation, but center each piece at its placement.
+        visual.transform = Transform3D(source.transform.basis, Vector3.ZERO)
+        body.add_child(visual)
+
+        var collision := CollisionShape3D.new()
+        collision.name = "GeneratedConvexCollision"
+        collision.shape = source.mesh.create_convex_shape()
+        body.add_child(collision)
+        add_child(body)
+
+    source_root.queue_free()
+
+
+func _find_obstacle_mesh(node: Node, target_name: String) -> MeshInstance3D:
+    if node is MeshInstance3D and (node as MeshInstance3D).name.to_lower().contains(target_name.to_lower()):
+        return node as MeshInstance3D
+    for child in node.get_children():
+        var found := _find_obstacle_mesh(child, target_name)
+        if found != null:
+            return found
+    return null
 
 func _build_industrial_structures() -> void:
     # Weathered steel frames make the climb feel like an abandoned quarry.
