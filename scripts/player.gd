@@ -404,7 +404,7 @@ func _aim_from_pointer(screen_position: Vector2) -> void:
     if pointer_vector.length_squared() < 16.0:
         return
     var next_angle := clampf(atan2(-pointer_vector.y, pointer_vector.x) - PI * 0.5, -PI, PI)
-    swing_delta = wrapf(next_angle - aim_angle, -PI, PI)
+    swing_delta = clampf(swing_delta + wrapf(next_angle - aim_angle, -PI, PI), -0.85, 0.85)
     last_aim_angle = aim_angle
     aim_angle = next_angle
     _update_hammer_pose()
@@ -435,14 +435,18 @@ func _physics_process(delta: float) -> void:
                 var tangent := Vector3(-lever.y, lever.x, 0.0).normalized()
                 if tangent.length_squared() > 0.1:
                     velocity += tangent * clampf(swing_delta * 8.0, -2.8, 2.8)
+                swing_delta = 0.0
                 # Keep a small upward component when bracing against a near-vertical wall.
                 if absf(normal.y) < 0.28:
                     velocity.y += 5.5 * delta
             hook_feedback = "Есть упор! Веди серп дальше, чтобы подняться."
         else:
             hook_feedback = "Коснись экрана и веди серп к камню."
-
-    swing_delta = move_toward(swing_delta, 0.0, 5.5 * delta)
+            swing_delta = move_toward(swing_delta, 0.0, 5.5 * delta)
+    else:
+        swing_delta = move_toward(swing_delta, 0.0, 5.5 * delta)
+    if is_on_floor():
+        velocity.x = move_toward(velocity.x, 0.0, 2.4 * delta)
     velocity.x = clampf(velocity.x, -MAX_HORIZONTAL_SPEED, MAX_HORIZONTAL_SPEED)
     velocity.y = clampf(velocity.y, -15.0, 18.0)
     velocity.z = 0.0
