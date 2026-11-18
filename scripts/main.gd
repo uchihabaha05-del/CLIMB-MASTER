@@ -521,6 +521,7 @@ func _build_hud() -> void:
 
     var title := Label.new()
     title.text = "CLIMB MASTER   /   " + _t("height")
+    hud_title_label = title
     title.add_theme_font_size_override("font_size", 13)
     title.add_theme_color_override("font_color", Color(0.52, 0.82, 0.83))
     info.add_child(title)
@@ -700,6 +701,17 @@ func _build_hud() -> void:
 
 
 
+func _localized_feedback(source: String) -> String:
+    if source.contains("Коснись"):
+        return _t("hint")
+    if source.contains("Упёрся"):
+        return _t("push")
+    if source.contains("Есть упор"):
+        return _t("grip")
+    if source.contains("Опасное"):
+        return _t("hazard")
+    return _t("touch")
+
 func _t(key: String) -> String:
     return str(T.get(lang, T["ru"]).get(key, key))
 
@@ -731,7 +743,9 @@ func _on_language_selected(index: int, picker: OptionButton) -> void:
 
 func _apply_language() -> void:
     if is_instance_valid(height_label):
-        height_label.text = "0"
+        height_label.text = "0 m" if lang != "ru" else "0 м"
+    if is_instance_valid(hud_title_label):
+        hud_title_label.text = "CLIMB MASTER   /   " + _t("height")
     if is_instance_valid(record_label):
         record_label.text = _t("record") % int(best_height)
     if is_instance_valid(checkpoint_label):
@@ -924,13 +938,13 @@ func _process(delta: float) -> void:
     _check_checkpoint()
     if player.hook_feedback != last_player_feedback:
         last_player_feedback = player.hook_feedback
-        status_label.text = last_player_feedback
+        status_label.text = _localized_feedback(last_player_feedback)
     if h > best_height:
         var old_best := int(best_height)
         best_height = h
         if int(best_height) != old_best:
             _save_record()
-    height_label.text = "%d м" % int(h)
+    height_label.text = ("%d m" % int(h)) if lang != "ru" else "%d м" % int(h)
     record_label.text = _t("record") % int(best_height)
     climb_progress.value = clampf(h, 0.0, TOP_HEIGHT)
     _check_finish()
