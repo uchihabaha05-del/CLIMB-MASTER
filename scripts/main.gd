@@ -23,6 +23,9 @@ var active_checkpoint := 0
 var checkpoint_label: Label
 var record_label: Label
 var climb_progress: ProgressBar
+var coin_count_label: Label
+var coin_count := 0
+var collectible_nodes: Array[Node3D] = []
 var pause_overlay: Control
 var moving_obstacles: Array[AnimatableBody3D] = []
 var obstacle_clock := 0.0
@@ -54,6 +57,8 @@ func _ready() -> void:
     _build_industrial_structures()
     _build_checkpoints()
     _build_obstacles()
+    _build_collectibles()
+    _build_atmosphere()
     _build_player()
     _build_camera()
     _build_hud()
@@ -472,6 +477,101 @@ func _build_obstacles() -> void:
         add_child(obstacle)
 
 
+func _build_collectibles() -> void:
+    # Optional skill pickups sit beside the main footholds, not in the required path.
+    var pickup_positions := [
+        Vector3(2.65, 3.05, 0.0),
+        Vector3(-2.65, 6.0, 0.0),
+        Vector3(2.65, 9.0, 0.0),
+        Vector3(-2.65, 12.0, 0.0),
+        Vector3(2.65, 15.0, 0.0),
+        Vector3(-2.65, 18.0, 0.0)
+    ]
+    for i in range(pickup_positions.size()):
+        var pickup := Area3D.new()
+        pickup.name = "SummitToken_%02d" % i
+        pickup.position = pickup_positions[i]
+        pickup.collision_layer = 0
+        pickup.collision_mask = 1
+        pickup.monitoring = true
+        pickup.monitorable = false
+
+        var token := MeshInstance3D.new()
+        var ring_mesh := TorusMesh.new()
+        ring_mesh.inner_radius = 0.20
+        ring_mesh.outer_radius = 0.34
+        ring_mesh.rings = 12
+        ring_mesh.ring_segments = 8
+        token.mesh = ring_mesh
+        token.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+        var gold := StandardMaterial3D.new()
+        gold.albedo_color = Color(1.0, 0.72, 0.20)
+        gold.metallic = 0.82
+        gold.roughness = 0.22
+        gold.emission_enabled = true
+        gold.emission = Color(0.95, 0.48, 0.08)
+        gold.emission_energy_multiplier = 1.25
+        token.material_override = gold
+        pickup.add_child(token)
+
+        var core := MeshInstance3D.new()
+        var core_mesh := SphereMesh.new()
+        core_mesh.radius = 0.12
+        core_mesh.height = 0.24
+        core.mesh = core_mesh
+        core.material_override = gold
+        pickup.add_child(core)
+
+        var trigger := CollisionShape3D.new()
+        var sphere := SphereShape3D.new()
+        sphere.radius = 0.62
+        trigger.shape = sphere
+        pickup.add_child(trigger)
+        pickup.body_entered.connect(_on_collectible_body_entered.bind(pickup))
+        add_child(pickup)
+        collectible_nodes.append(pickup)
+
+
+func _on_collectible_body_entered(body: Node3D, pickup: Node3D) -> void:
+    if body != player or not is_instance_valid(pickup):
+        return
+    coin_count += 1
+    if is_instance_valid(coin_count_label):
+        coin_count_label.text = "✦ %d" % coin_count
+    status_label.text = "МОНЕТА ПОЛУЧЕНА!  +1"
+    pickup.queue_free()
+    collectible_nodes.erase(pickup)
+
+
+func _build_atmosphere() -> void:
+    # Low-cost ambient motes add depth to the quarry without blocking the climbing lane.
+    var dust := GPUParticles3D.new()
+    dust.name = "QuarryDust"
+    dust.position = Vector3(0.0, 9.0, -2.2)
+    dust.amount = 36
+    dust.lifetime = 7.0
+    dust.visibility_aabb = AABB(Vector3(-7.0, -12.0, -2.0), Vector3(14.0, 24.0, 4.0))
+    var particle_mesh := SphereMesh.new()
+    particle_mesh.radius = 0.025
+    particle_mesh.height = 0.05
+    var particle_material := StandardMaterial3D.new()
+    particle_material.albedo_color = Color(0.88, 0.70, 0.48, 0.42)
+    particle_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+    particle_mesh.material = particle_material
+    dust.draw_pass_1 = particle_mesh
+    var process := ParticleProcessMaterial.new()
+    process.direction = Vector3(0.18, 0.7, 0.0)
+    process.spread = 38.0
+    process.initial_velocity_min = 0.08
+    process.initial_velocity_max = 0.28
+    process.gravity = Vector3(0.0, 0.015, 0.0)
+    process.scale_min = 0.55
+    process.scale_max = 1.35
+    process.color = Color(1.0, 0.82, 0.62, 0.48)
+    dust.process_material = process
+    add_child(dust)
+
+
 func _add_platform(pos: Vector3, size: Vector3, color: Color) -> void:
     var body := StaticBody3D.new()
     body.position = pos
@@ -541,6 +641,12 @@ func _build_hud() -> void:
     record_label.add_theme_font_size_override("font_size", 12)
     record_label.add_theme_color_override("font_color", Color(0.70, 0.76, 0.81))
     info.add_child(record_label)
+
+    coin_count_label = Label.new()
+    coin_count_label.text = "✦ 0"
+    coin_count_label.add_theme_font_size_override("font_size", 15)
+    coin_count_label.add_theme_color_override("font_color", Color(1.0, 0.78, 0.30))
+    info.add_child(coin_count_label)
 
     climb_progress = ProgressBar.new()
     climb_progress.custom_minimum_size = Vector2(0, 8)
@@ -941,6 +1047,11 @@ func _physics_process(delta: float) -> void:
         var obstacle := moving_obstacles[i]
         if is_instance_valid(obstacle):
             obstacle.rotation.z = sin(obstacle_clock * (0.82 + float(i) * 0.13) + float(i) * 1.7) * 0.48
+    for i in range(collectible_nodes.size()):
+        var pickup := collectible_nodes[i]
+        if is_instance_valid(pickup):
+            pickup.rotation.y += delta * 1.35
+            pickup.position.y += sin(obstacle_clock * 2.0 + float(i)) * delta * 0.12
 
 func _process(delta: float) -> void:
     if not is_instance_valid(player):
