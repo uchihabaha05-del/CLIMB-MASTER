@@ -23,6 +23,8 @@ var anchor_point := Vector3.ZERO
 var rope_length := 0.0
 var previous_hook_vector := Vector3.ZERO
 var hook_cooldown := 0.0
+var imported_skeleton: Skeleton3D
+var posed_bones: Array[int] = []
 
 func _ready() -> void:
     var pot_loaded := _add_imported_model("res://assets/models/cauldron.glb", 1.72, "ImportedCauldron")
@@ -35,9 +37,60 @@ func _ready() -> void:
         # Keep the lower body inside the pot; the upper torso and head remain visible.
         human.position = Vector3(0.0, -0.12, -0.08)
         human.rotation_degrees = Vector3(0.0, 180.0, 0.0)
+        _apply_seated_pose(human)
     else:
         _make_fallback_human()
     _make_hammer()
+
+func _apply_seated_pose(root: Node) -> void:
+    imported_skeleton = _find_skeleton(root)
+    if imported_skeleton == null:
+        push_warning("Imported climber has no Skeleton3D; using its original bind pose.")
+        return
+
+    # Bone names differ between model exporters, so identify common humanoid names.
+    for bone_index in range(imported_skeleton.get_bone_count()):
+        var bone_name := imported_skeleton.get_bone_name(bone_index).to_lower().replace("_", "").replace(" ", "")
+        var pose := Quaternion.IDENTITY
+        var matched := false
+
+        if bone_name.contains("leftupperarm") or bone_name.contains("upperarm_l") or bone_name.contains("leftarm"):
+            pose = Quaternion(Vector3.FORWARD, deg_to_rad(-48.0))
+            matched = true
+        elif bone_name.contains("rightupperarm") or bone_name.contains("upperarm_r") or bone_name.contains("rightarm"):
+            pose = Quaternion(Vector3.FORWARD, deg_to_rad(48.0))
+            matched = true
+        elif bone_name.contains("leftforearm") or bone_name.contains("lowerarm_l") or bone_name.contains("leftlowerarm"):
+            pose = Quaternion(Vector3.FORWARD, deg_to_rad(-72.0))
+            matched = true
+        elif bone_name.contains("rightforearm") or bone_name.contains("lowerarm_r") or bone_name.contains("rightlowerarm"):
+            pose = Quaternion(Vector3.FORWARD, deg_to_rad(72.0))
+            matched = true
+        elif bone_name.contains("leftupleg") or bone_name.contains("leftthigh") or bone_name.contains("thigh_l"):
+            pose = Quaternion(Vector3.RIGHT, deg_to_rad(-72.0))
+            matched = true
+        elif bone_name.contains("rightupleg") or bone_name.contains("rightthigh") or bone_name.contains("thigh_r"):
+            pose = Quaternion(Vector3.RIGHT, deg_to_rad(-72.0))
+            matched = true
+        elif bone_name.contains("leftleg") or bone_name.contains("calf_l") or bone_name.contains("leftcalf"):
+            pose = Quaternion(Vector3.RIGHT, deg_to_rad(92.0))
+            matched = true
+        elif bone_name.contains("rightleg") or bone_name.contains("calf_r") or bone_name.contains("rightcalf"):
+            pose = Quaternion(Vector3.RIGHT, deg_to_rad(92.0))
+            matched = true
+
+        if matched:
+            imported_skeleton.set_bone_pose_rotation(bone_index, pose)
+            posed_bones.append(bone_index)
+
+func _find_skeleton(node: Node) -> Skeleton3D:
+    if node is Skeleton3D:
+        return node as Skeleton3D
+    for child in node.get_children():
+        var found := _find_skeleton(child)
+        if found != null:
+            return found
+    return null
 
 func _add_imported_model(path: String, target_size: float, node_name: String) -> bool:
     if not ResourceLoader.exists(path):
