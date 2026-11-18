@@ -397,7 +397,7 @@ func _make_scythe() -> void:
 func _probe_scythe(angle: float) -> Dictionary:
     var space := get_world_3d().direct_space_state
     var hand := global_position + _hand_local(angle)
-    hand.z = PLAY_PLANE_Z
+    hand.z = PLAY_PLANE_Z + SCYTHE_Z
     var rot := Basis(Vector3.BACK, angle)
     var result := {"hits": 0}
     for local_point in scythe_points:
@@ -446,7 +446,10 @@ func _update_scythe(delta: float) -> void:
             var nxt := _probe_scythe(aim_angle + sub)
             var nxt_hits: int = nxt["hits"]
             if nxt_hits > hits_now:
-                contact = nxt          # blocked: the finger keeps pushing, the blade doesn't pass
+                # Stop on the first colliding sub-step so the rendered blade and
+                # the contact point describe the same pose.
+                aim_angle += sub
+                contact = nxt
                 break
             aim_angle += sub
             hits_now = nxt_hits
