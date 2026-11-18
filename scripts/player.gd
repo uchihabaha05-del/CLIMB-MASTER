@@ -58,7 +58,7 @@ func _add_imported_model(path: String, target_size: float, node_name: String) ->
         push_warning("Model has no visible mesh bounds: " + path)
         return false
     var largest_horizontal := maxf(bounds.size.x, bounds.size.z)
-    var reference_size := bounds.size.y if target_size > 1.0 and bounds.size.y > largest_horizontal else largest_horizontal
+    var reference_size := largest_horizontal if node_name == "ImportedCauldron" else bounds.size.y
     var scale_factor := target_size / maxf(reference_size, 0.001)
     instance.scale = Vector3.ONE * scale_factor
     if node_name == "ImportedCauldron":
@@ -70,7 +70,9 @@ func _add_imported_model(path: String, target_size: float, node_name: String) ->
     return true
 
 func _measure_model_bounds(node: Node, parent_transform: Transform3D) -> AABB:
-    var current_transform := parent_transform * node.transform
+    var current_transform := parent_transform
+    if node is Node3D:
+        current_transform = parent_transform * (node as Node3D).transform
     var combined := AABB()
     var has_bounds := false
     if node is MeshInstance3D and node.mesh != null:
