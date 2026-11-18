@@ -4,11 +4,19 @@ const PLAYER_SCRIPT = preload("res://scripts/player.gd")
 var player: CharacterBody3D
 var camera: Camera3D
 var height_label: Label
+var hud_title_label: Label
 var status_label: Label
 var restart_button: Button
 var pause_button: Button
+const TOP_HEIGHT := 20.0
+const SAVE_PATH := "user://climb_master.cfg"
 var start_y := 0.0
-var peak_y := 0.0
+var best_height := 0.0
+var finished := false
+var finish_position := Vector3.ZERO
+var reset_button: Button
+var win_overlay: Control
+var win_label: Label
 var game_over := false
 var checkpoint_positions: Array[Vector3] = []
 var active_checkpoint := 0
@@ -19,6 +27,24 @@ var pause_overlay: Control
 var moving_obstacles: Array[AnimatableBody3D] = []
 var obstacle_clock := 0.0
 var last_player_feedback := ""
+var lang := "ru"
+var start_overlay: Control
+var intro_overlay: Control
+var language_selectors: Array[OptionButton] = []
+var pause_title_label: Label
+var pause_subtitle_label: Label
+var resume_button_ref: Button
+var reset_menu_ref: Button
+var win_again_ref: Button
+var win_stay_ref: Button
+const LANGS := ["ru", "en", "es", "fr"]
+const LANG_NAMES := ["Русский", "English", "Español", "Français"]
+const T := {
+"ru":{"height":"ВЫСОТА","record":"РЕКОРД  %d м","checkpoint":"СТАРТ  •  КП 0","checkpoint_n":"КОНТРОЛЬНАЯ ТОЧКА  •  %d","touch":"КАСАЙСЯ ЭКРАНА И ВЕДИ СЕРП  •  ЦЕПЛЯЙСЯ ЗА КРАЯ","reset":"СБРОС","pause":"Пауза","resume":"ПРОДОЛЖИТЬ ПОДЪЁМ","to_cp":"К КОНТРОЛЬНОЙ ТОЧКЕ","pause_title":"ПЕРЕДЫШКА","pause_sub":"Подумай над следующим движением","restart":"ВЕРНУТЬСЯ К КОНТРОЛЬНОЙ ТОЧКЕ","again":"НАЧАТЬ ЗАНОВО","stay":"ОСТАТЬСЯ НА ВЕРШИНЕ","continue":"ПРОДОЛЖИТЬ","language":"ЯЗЫК","welcome":"ПОКОРИ СВОЮ ВЕРШИНУ","hint":"Коснись экрана и веди серп к камню.","push":"Упёрся. Веди палец, чтобы оттолкнуться.","grip":"Есть упор! Веди серп дальше, чтобы подняться.","hazard":"Опасное препятствие! Обойди его серпом.","fall":"Падение! Нажми СБРОС, чтобы вернуться к контрольной точке.","win":"ВЕРШИНА!\nРекорд: %d м"},
+"en":{"height":"HEIGHT","record":"BEST  %d m","checkpoint":"START  •  CP 0","checkpoint_n":"CHECKPOINT  •  %d","touch":"DRAG THE SCYTHE  •  HOOK ONTO EDGES","reset":"RESET","pause":"Pause","resume":"CONTINUE CLIMBING","to_cp":"TO CHECKPOINT","pause_title":"TAKE A BREATHER","pause_sub":"Plan your next move","restart":"RETURN TO CHECKPOINT","again":"PLAY AGAIN","stay":"STAY AT THE SUMMIT","continue":"CONTINUE","language":"LANGUAGE","welcome":"CONQUER YOUR SUMMIT","hint":"Touch the screen and guide the scythe to a rock.","push":"Blocked. Keep dragging to push away.","grip":"Hooked! Keep moving the scythe to climb.","hazard":"Dangerous obstacle! Swing around it.","fall":"You fell! Press RESET to return to the checkpoint.","win":"SUMMIT REACHED!\nBest: %d m"},
+"es":{"height":"ALTURA","record":"RÉCORD  %d m","checkpoint":"INICIO  •  CP 0","checkpoint_n":"PUNTO DE CONTROL  •  %d","touch":"DESLIZA LA HOZ  •  ENGÁNCHATE A LOS BORDES","reset":"REINICIAR","pause":"Pausa","resume":"CONTINUAR ESCALANDO","to_cp":"IR AL PUNTO DE CONTROL","pause_title":"TOMA UN RESPIRO","pause_sub":"Piensa en tu siguiente movimiento","restart":"VOLVER AL PUNTO DE CONTROL","again":"JUGAR DE NUEVO","stay":"QUEDARSE EN LA CIMA","continue":"CONTINUAR","language":"IDIOMA","welcome":"CONQUISTA LA CIMA","hint":"Toca la pantalla y guía la hoz hacia una roca.","push":"Bloqueado. Sigue deslizando para impulsarte.","grip":"¡Enganchado! Sigue moviendo la hoz para subir.","hazard":"¡Obstáculo peligroso! Rodéalo con la hoz.","fall":"¡Has caído! Pulsa REINICIAR para volver al punto de control.","win":"¡HAS LLEGADO A LA CIMA!\nRécord: %d m"},
+"fr":{"height":"HAUTEUR","record":"RECORD  %d m","checkpoint":"DÉPART  •  CP 0","checkpoint_n":"POINT DE CONTRÔLE  •  %d","touch":"FAIS GLISSER LA FAUCILLE  •  ACCROCHE-TOI AUX REBORDS","reset":"RÉINITIALISER","pause":"Pause","resume":"CONTINUER L’ASCENSION","to_cp":"RETOUR AU POINT DE CONTRÔLE","pause_title":"PETITE PAUSE","pause_sub":"Prépare ton prochain mouvement","restart":"RETOURNER AU POINT DE CONTRÔLE","again":"REJOUER","stay":"RESTER AU SOMMET","continue":"CONTINUER","language":"LANGUE","welcome":"CONQUIERS TON SOMMET","hint":"Touche l’écran et guide la faucille vers un rocher.","push":"Bloqué. Continue à glisser pour te repousser.","grip":"Accroché ! Continue à bouger la faucille pour grimper.","hazard":"Obstacle dangereux ! Contourne-le avec la faucille.","fall":"Chute ! Appuie sur RÉINITIALISER pour revenir au point de contrôle.","win":"SOMMET ATTEINT !\nRecord : %d m"}
+}
 
 func _ready() -> void:
     _build_world()
@@ -32,7 +58,17 @@ func _ready() -> void:
     _build_camera()
     _build_hud()
     start_y = player.global_position.y
-    peak_y = start_y
+    _load_record()
+    var cfg := ConfigFile.new()
+    if cfg.load(SAVE_PATH) == OK:
+        lang = str(cfg.get_value("settings", "language", "ru"))
+    if not LANGS.has(lang):
+        lang = "ru"
+    _apply_language()
+    record_label.text = _t("record") % int(best_height)
+    _build_start_flow()
+    get_tree().paused = true
+    call_deferred("_play_intro")
 
 func _build_world() -> void:
     var env := WorldEnvironment.new()
@@ -226,12 +262,12 @@ func _build_asset_course() -> void:
     var placements: Array[Dictionary] = [
         {"file": "fallen_log", "position": Vector3(-3.15, 1.15, -0.58), "rotation": Vector3(0.0, 0.12, 0.24), "scale": 0.78},
         {"file": "crate_stack", "position": Vector3(3.1, 4.1, -0.58), "rotation": Vector3(0.0, -0.18, -0.08), "scale": 0.72},
-        {"file": "rock_arch", "position": Vector3(-3.25, 7.05, -0.62), "rotation": Vector3(0.0, 0.0, 0.0), "scale": 0.70},
-        {"file": "tire_stack", "position": Vector3(3.15, 10.0, -0.58), "rotation": Vector3(0.0, 0.25, 0.06), "scale": 0.72},
-        {"file": "pipe_cluster", "position": Vector3(-3.2, 12.95, -0.58), "rotation": Vector3(0.0, 0.0, 0.10), "scale": 0.68},
-        {"file": "broken_bridge", "position": Vector3(3.1, 15.85, -0.62), "rotation": Vector3(0.0, 0.0, -0.12), "scale": 0.70},
+        {"file": "rock_arch", "collision": "trimesh", "position": Vector3(-3.25, 7.05, -0.62), "rotation": Vector3(0.0, 0.0, 0.0), "scale": 0.70},
+        {"file": "tire_stack", "collision": "trimesh", "position": Vector3(3.15, 10.0, -0.58), "rotation": Vector3(0.0, 0.25, 0.06), "scale": 0.72},
+        {"file": "pipe_cluster", "collision": "trimesh", "position": Vector3(-3.2, 12.95, -0.58), "rotation": Vector3(0.0, 0.0, 0.10), "scale": 0.68},
+        {"file": "broken_bridge", "collision": "trimesh", "position": Vector3(3.1, 15.85, -0.62), "rotation": Vector3(0.0, 0.0, -0.12), "scale": 0.70},
         {"file": "ice_boulder", "position": Vector3(-3.15, 18.75, -0.58), "rotation": Vector3(0.0, 0.55, -0.10), "scale": 0.70},
-        {"file": "giant_chain", "position": Vector3(3.1, 19.2, -0.60), "rotation": Vector3(0.0, 0.0, 0.0), "scale": 0.58}
+        {"file": "giant_chain", "collision": "trimesh", "position": Vector3(3.1, 19.2, -0.60), "rotation": Vector3(0.0, 0.0, 0.0), "scale": 0.58}
     ]
 
     for item in placements:
@@ -249,18 +285,22 @@ func _build_asset_course() -> void:
         instance.rotation = item["rotation"]
         instance.scale = Vector3.ONE * float(item["scale"])
         add_child(instance)
-        _add_asset_collisions(instance)
+        _add_asset_collisions(instance, str(item.get("collision", "convex")) == "trimesh")
 
 
-func _add_asset_collisions(node: Node) -> void:
-    # Convex colliders are cheaper than triangle meshes on mobile.
+func _add_asset_collisions(node: Node, trimesh := false) -> void:
+    # Convex hulls are cheap, but fill in arches, holes and chains, so those assets
+    # use an exact (static) triangle-mesh collider instead.
     if node is MeshInstance3D:
         var mesh_instance := node as MeshInstance3D
         if mesh_instance.mesh != null:
-            mesh_instance.create_convex_collision(true, true)
+            if trimesh:
+                mesh_instance.create_trimesh_collision()
+            else:
+                mesh_instance.create_convex_collision(true, true)
     for child in node.get_children():
         if child is not StaticBody3D:
-            _add_asset_collisions(child)
+            _add_asset_collisions(child, trimesh)
 
 
 func _build_industrial_structures() -> void:
@@ -321,7 +361,7 @@ func _build_checkpoints() -> void:
         ring_mesh.outer_radius = 0.82
         ring.mesh = ring_mesh
         # Keep the checkpoint ring facing the side-on camera.
-        ring.rotation = Vector3.ZERO
+        ring.rotation_degrees = Vector3(90.0, 0.0, 0.0)
         var ring_mat := StandardMaterial3D.new()
         ring_mat.albedo_color = Color(0.15, 0.85, 0.62)
         ring_mat.emission_enabled = true
@@ -344,6 +384,30 @@ func _build_checkpoints() -> void:
         beacon_mat.emission = Color(0.02, 0.35, 0.22)
         beacon.material_override = beacon_mat
         marker.add_child(beacon)
+
+    _build_finish_marker()
+
+func _build_finish_marker() -> void:
+    finish_position = Vector3(-1.45, 21.0, 0.0)
+    var marker := Node3D.new()
+    marker.name = "SummitMarker"
+    marker.position = finish_position
+    add_child(marker)
+    var gold := StandardMaterial3D.new()
+    gold.albedo_color = Color(1.0, 0.78, 0.22)
+    gold.metallic = 0.8
+    gold.roughness = 0.3
+    gold.emission_enabled = true
+    gold.emission = Color(0.9, 0.55, 0.05)
+    gold.emission_energy_multiplier = 1.3
+    var ring := MeshInstance3D.new()
+    var ring_mesh := TorusMesh.new()
+    ring_mesh.inner_radius = 0.72
+    ring_mesh.outer_radius = 0.95
+    ring.mesh = ring_mesh
+    ring.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+    ring.material_override = gold
+    marker.add_child(ring)
 
 func _build_obstacles() -> void:
     # Compact edge-mounted pendulums: hazards challenge timing without sealing
@@ -369,12 +433,11 @@ func _build_obstacles() -> void:
         var data: Dictionary = hazard_data[i]
         var obstacle := AnimatableBody3D.new()
         obstacle.name = "EdgePendulum_%d" % i
-        obstacle.position = Vector3(float(data["x"]), float(data["y"]), 0.25)
+        obstacle.position = Vector3(float(data["x"]), float(data["y"]), 0.0)
         obstacle.sync_to_physics = true
         obstacle.add_to_group("climb_hazard")
 
-        var pivot := Node3D.new()
-        obstacle.add_child(pivot)
+        var pivot: Node3D = obstacle   # arm, weight and collision are children of the body itself
         var arm := MeshInstance3D.new()
         var arm_mesh := CylinderMesh.new()
         arm_mesh.top_radius = 0.075
@@ -458,7 +521,8 @@ func _build_hud() -> void:
     info_panel.add_child(info)
 
     var title := Label.new()
-    title.text = "CLIMB MASTER   /   ВЫСОТА"
+    title.text = "CLIMB MASTER   /   " + _t("height")
+    hud_title_label = title
     title.add_theme_font_size_override("font_size", 13)
     title.add_theme_color_override("font_color", Color(0.52, 0.82, 0.83))
     info.add_child(title)
@@ -470,7 +534,7 @@ func _build_hud() -> void:
     info.add_child(height_label)
 
     record_label = Label.new()
-    record_label.text = "РЕКОРД  0 м"
+    record_label.text = _t("record") % 0
     record_label.add_theme_font_size_override("font_size", 12)
     record_label.add_theme_color_override("font_color", Color(0.70, 0.76, 0.81))
     info.add_child(record_label)
@@ -478,7 +542,7 @@ func _build_hud() -> void:
     climb_progress = ProgressBar.new()
     climb_progress.custom_minimum_size = Vector2(0, 8)
     climb_progress.min_value = 0
-    climb_progress.max_value = 30
+    climb_progress.max_value = TOP_HEIGHT
     climb_progress.value = 0
     climb_progress.show_percentage = false
     climb_progress.add_theme_stylebox_override("background", _hud_panel_style(Color(0.12, 0.17, 0.20)))
@@ -493,7 +557,7 @@ func _build_hud() -> void:
 
     # Compact checkpoint badge.
     checkpoint_label = Label.new()
-    checkpoint_label.text = "◆  СТАРТ  •  КП 0"
+    checkpoint_label.text = _t("checkpoint")
     checkpoint_label.position = Vector2(22, 148)
     checkpoint_label.add_theme_font_size_override("font_size", 14)
     checkpoint_label.add_theme_color_override("font_color", Color(0.72, 0.94, 0.86))
@@ -503,7 +567,7 @@ func _build_hud() -> void:
     var controls := HBoxContainer.new()
     controls.anchor_left = 1.0
     controls.anchor_right = 1.0
-    controls.offset_left = -154
+    controls.offset_left = -200
     controls.offset_right = -22
     controls.offset_top = 20
     controls.offset_bottom = 82
@@ -511,8 +575,8 @@ func _build_hud() -> void:
     hud.add_child(controls)
 
     pause_button = Button.new()
-    pause_button.text = "Ⅱ"
-    pause_button.tooltip_text = "Пауза"
+    pause_button.text = "II"
+    pause_button.tooltip_text = _t("pause")
     pause_button.custom_minimum_size = Vector2(62, 58)
     pause_button.add_theme_font_size_override("font_size", 24)
     _style_hud_button(pause_button, Color(0.08, 0.15, 0.18, 0.96))
@@ -520,11 +584,11 @@ func _build_hud() -> void:
     pause_button.pressed.connect(_toggle_pause)
     controls.add_child(pause_button)
 
-    var reset_button := Button.new()
-    reset_button.text = "↻"
+    reset_button = Button.new()
+    reset_button.text = _t("reset")
     reset_button.tooltip_text = "Вернуться к контрольной точке"
-    reset_button.custom_minimum_size = Vector2(62, 58)
-    reset_button.add_theme_font_size_override("font_size", 27)
+    reset_button.custom_minimum_size = Vector2(96, 58)
+    reset_button.add_theme_font_size_override("font_size", 15)
     _style_hud_button(reset_button, Color(0.20, 0.11, 0.09, 0.96))
     reset_button.process_mode = Node.PROCESS_MODE_ALWAYS
     reset_button.pressed.connect(_reset_player)
@@ -544,7 +608,7 @@ func _build_hud() -> void:
     hud.add_child(hint_panel)
 
     status_label = Label.new()
-    status_label.text = "КАСАЙСЯ ЭКРАНА И ВЕДИ СЕРП  •  ЦЕПЛЯЙСЯ ЗА КРАЯ"
+    status_label.text = _t("touch")
     status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -553,7 +617,7 @@ func _build_hud() -> void:
     hint_panel.add_child(status_label)
 
     restart_button = Button.new()
-    restart_button.text = "↻  ВЕРНУТЬСЯ К КОНТРОЛЬНОЙ ТОЧКЕ"
+    restart_button.text = _t("restart")
     restart_button.anchor_left = 0.5
     restart_button.anchor_right = 0.5
     restart_button.anchor_top = 0.5
@@ -600,33 +664,232 @@ func _build_hud() -> void:
     pause_card.add_child(pause_content)
 
     var pause_title := Label.new()
-    pause_title.text = "ПЕРЕДЫШКА"
+    pause_title.text = _t("pause_title")
+    pause_title_label = pause_title
     pause_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     pause_title.add_theme_font_size_override("font_size", 28)
     pause_title.add_theme_color_override("font_color", Color(1.0, 0.84, 0.60))
     pause_content.add_child(pause_title)
 
     var pause_subtitle := Label.new()
-    pause_subtitle.text = "Подумай над следующим движением"
+    pause_subtitle.text = _t("pause_sub")
+    pause_subtitle_label = pause_subtitle
     pause_subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     pause_subtitle.add_theme_font_size_override("font_size", 14)
     pause_subtitle.add_theme_color_override("font_color", Color(0.72, 0.82, 0.84))
     pause_content.add_child(pause_subtitle)
 
     var resume_button := Button.new()
-    resume_button.text = "ПРОДОЛЖИТЬ ПОДЪЁМ"
+    resume_button.text = _t("resume")
+    resume_button_ref = resume_button
     resume_button.custom_minimum_size = Vector2(300, 54)
     _style_hud_button(resume_button, Color(0.08, 0.42, 0.36, 1.0))
     resume_button.pressed.connect(_toggle_pause)
     pause_content.add_child(resume_button)
 
     var menu_reset := Button.new()
-    menu_reset.text = "К КОНТРОЛЬНОЙ ТОЧКЕ"
+    menu_reset.text = _t("to_cp")
+    reset_menu_ref = menu_reset
     menu_reset.custom_minimum_size = Vector2(300, 48)
     _style_hud_button(menu_reset, Color(0.22, 0.14, 0.11, 1.0))
     menu_reset.pressed.connect(_reset_player)
     pause_content.add_child(menu_reset)
 
+    _build_win_overlay(hud)
+    _add_language_selector(pause_content)
+    # Touches that start on these controls must not swing the scythe.
+    player.ui_blockers = [pause_button, reset_button, restart_button, win_overlay]
+
+
+
+func _localized_feedback(source: String) -> String:
+    if source.contains("Коснись"):
+        return _t("hint")
+    if source.contains("Упёрся"):
+        return _t("push")
+    if source.contains("Есть упор"):
+        return _t("grip")
+    if source.contains("Опасное"):
+        return _t("hazard")
+    return _t("touch")
+
+func _t(key: String) -> String:
+    return str(T.get(lang, T["ru"]).get(key, key))
+
+func _add_language_selector(parent: Control) -> void:
+    var row := HBoxContainer.new()
+    row.alignment = BoxContainer.ALIGNMENT_CENTER
+    parent.add_child(row)
+    var caption := Label.new()
+    caption.text = _t("language") + ":"
+    row.add_child(caption)
+    var picker := OptionButton.new()
+    picker.custom_minimum_size = Vector2(210, 44)
+    for item in LANG_NAMES:
+        picker.add_item(item)
+    picker.select(maxi(0, LANGS.find(lang)))
+    picker.item_selected.connect(_on_language_selected.bind(picker))
+    row.add_child(picker)
+    language_selectors.append(picker)
+
+func _on_language_selected(index: int, picker: OptionButton) -> void:
+    if index < 0 or index >= LANGS.size():
+        return
+    lang = LANGS[index]
+    var cfg := ConfigFile.new()
+    cfg.load(SAVE_PATH)
+    cfg.set_value("settings", "language", lang)
+    cfg.save(SAVE_PATH)
+    _apply_language()
+
+func _apply_language() -> void:
+    if is_instance_valid(height_label):
+        height_label.text = "0 m" if lang != "ru" else "0 м"
+    if is_instance_valid(hud_title_label):
+        hud_title_label.text = "CLIMB MASTER   /   " + _t("height")
+    if is_instance_valid(record_label):
+        record_label.text = _t("record") % int(best_height)
+    if is_instance_valid(checkpoint_label):
+        checkpoint_label.text = _t("checkpoint")
+    if is_instance_valid(status_label):
+        status_label.text = _t("touch")
+    if is_instance_valid(reset_button):
+        reset_button.text = _t("reset")
+        reset_button.tooltip_text = _t("reset")
+    if is_instance_valid(pause_button):
+        pause_button.tooltip_text = _t("pause")
+    if is_instance_valid(pause_title_label):
+        pause_title_label.text = _t("pause_title")
+    if is_instance_valid(pause_subtitle_label):
+        pause_subtitle_label.text = _t("pause_sub")
+    if is_instance_valid(resume_button_ref):
+        resume_button_ref.text = _t("resume")
+    if is_instance_valid(reset_menu_ref):
+        reset_menu_ref.text = _t("to_cp")
+    if is_instance_valid(restart_button):
+        restart_button.text = _t("restart")
+    if is_instance_valid(win_again_ref):
+        win_again_ref.text = _t("again")
+    if is_instance_valid(win_stay_ref):
+        win_stay_ref.text = _t("stay")
+    for picker in language_selectors:
+        if is_instance_valid(picker):
+            picker.select(maxi(0, LANGS.find(lang)))
+    if is_instance_valid(start_overlay):
+        var c := start_overlay.get_node_or_null("CenterCard/Content/ContinueButton") as Button
+        var w := start_overlay.get_node_or_null("CenterCard/Content/WelcomeLabel") as Label
+        if c:
+            c.text = _t("continue")
+        if w:
+            w.text = _t("welcome")
+
+func _build_start_flow() -> void:
+    var hud := get_node("GameHUD") as CanvasLayer
+    intro_overlay = Control.new()
+    intro_overlay.name = "PublisherIntro"
+    intro_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    intro_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+    intro_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
+    hud.add_child(intro_overlay)
+    var dark := ColorRect.new()
+    dark.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    dark.color = Color(0.012, 0.018, 0.03, 1.0)
+    intro_overlay.add_child(dark)
+    var peak := TextureRect.new()
+    peak.texture = load("res://assets/summit_forge_logo.svg") as Texture2D
+    peak.set_anchors_preset(Control.PRESET_CENTER)
+    peak.position = Vector2(-250, -205)
+    peak.size = Vector2(500, 410)
+    peak.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+    peak.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
+    peak.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    intro_overlay.add_child(peak)
+    var brand := Label.new()
+    brand.text = "SUMMIT FORGE"
+    brand.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    brand.set_anchors_preset(Control.PRESET_CENTER)
+    brand.position = Vector2(-300, 20)
+    brand.size = Vector2(600, 80)
+    brand.add_theme_font_size_override("font_size", 42)
+    brand.add_theme_color_override("font_color", Color(0.94, 0.76, 0.42))
+    intro_overlay.add_child(brand)
+
+    start_overlay = Control.new()
+    start_overlay.name = "StartMenu"
+    start_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    start_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+    start_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
+    start_overlay.visible = false
+    hud.add_child(start_overlay)
+    var bg := ColorRect.new()
+    bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    bg.color = Color(0.025, 0.045, 0.07, 1.0)
+    start_overlay.add_child(bg)
+    var splash_art := TextureRect.new()
+    splash_art.texture = load("res://assets/start_screen.jpg") as Texture2D
+    splash_art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    splash_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+    splash_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+    splash_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    start_overlay.add_child(splash_art)
+    var summit := Label.new()
+    summit.text = ""
+    summit.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    summit.set_anchors_preset(Control.PRESET_CENTER_TOP)
+    summit.position = Vector2(-180, 22)
+    summit.size = Vector2(360, 205)
+    summit.add_theme_font_size_override("font_size", 180)
+    summit.add_theme_color_override("font_color", Color(0.84, 0.70, 0.48))
+    start_overlay.add_child(summit)
+    var card := PanelContainer.new()
+    card.name = "CenterCard"
+    card.anchor_left = 0.5
+    card.anchor_right = 0.5
+    card.anchor_top = 0.5
+    card.anchor_bottom = 0.5
+    card.offset_left = -245
+    card.offset_right = 245
+    card.offset_top = -145
+    card.offset_bottom = 185
+    card.add_theme_stylebox_override("panel", _hud_panel_style(Color(0.025, 0.045, 0.065, 0.96)))
+    start_overlay.add_child(card)
+    var content := VBoxContainer.new()
+    content.name = "Content"
+    content.alignment = BoxContainer.ALIGNMENT_CENTER
+    content.add_theme_constant_override("separation", 18)
+    card.add_child(content)
+    var game_name := Label.new()
+    game_name.text = "CLIMB MASTER"
+    game_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    game_name.add_theme_font_size_override("font_size", 34)
+    game_name.add_theme_color_override("font_color", Color(1.0, 0.78, 0.35))
+    content.add_child(game_name)
+    var welcome := Label.new()
+    welcome.name = "WelcomeLabel"
+    welcome.text = _t("welcome")
+    welcome.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    welcome.add_theme_font_size_override("font_size", 17)
+    content.add_child(welcome)
+    _add_language_selector(content)
+    var go := Button.new()
+    go.name = "ContinueButton"
+    go.text = _t("continue")
+    go.custom_minimum_size = Vector2(330, 62)
+    _style_hud_button(go, Color(0.58, 0.34, 0.08, 1.0))
+    go.pressed.connect(_start_game)
+    content.add_child(go)
+
+func _play_intro() -> void:
+    await get_tree().create_timer(2.4, true, false, true).timeout
+    if is_instance_valid(intro_overlay):
+        intro_overlay.visible = false
+    if is_instance_valid(start_overlay):
+        start_overlay.visible = true
+
+func _start_game() -> void:
+    if is_instance_valid(start_overlay):
+        start_overlay.visible = false
+    get_tree().paused = false
 
 func _hud_panel_style(color: Color) -> StyleBoxFlat:
     var style := StyleBoxFlat.new()
@@ -662,30 +925,37 @@ func _style_hud_button(button: Button, color: Color) -> void:
 
 
 func _toggle_pause() -> void:
+    player.release_pointer()
     get_tree().paused = not get_tree().paused
     if is_instance_valid(pause_button):
-        pause_button.text = "▶" if get_tree().paused else "Ⅱ"
+        pause_button.text = ">" if get_tree().paused else "II"
     if is_instance_valid(pause_overlay):
         pause_overlay.visible = get_tree().paused
 
-func _process(delta: float) -> void:
+func _physics_process(delta: float) -> void:
     obstacle_clock += delta
     for i in range(moving_obstacles.size()):
         var obstacle := moving_obstacles[i]
         if is_instance_valid(obstacle):
-            var pivot := obstacle.get_child(0) as Node3D
-            pivot.rotation.z = sin(obstacle_clock * (0.82 + float(i) * 0.13) + float(i) * 1.7) * 0.48
+            obstacle.rotation.z = sin(obstacle_clock * (0.82 + float(i) * 0.13) + float(i) * 1.7) * 0.48
+
+func _process(delta: float) -> void:
     if not is_instance_valid(player):
         return
     var h := maxf(0.0, player.global_position.y - start_y)
     _check_checkpoint()
     if player.hook_feedback != last_player_feedback:
         last_player_feedback = player.hook_feedback
-        status_label.text = last_player_feedback
-    peak_y = maxf(peak_y, h)
-    height_label.text = "%d м" % int(h)
-    record_label.text = "РЕКОРД  %d м" % int(peak_y)
-    climb_progress.value = clampf(h, 0.0, 30.0)
+        status_label.text = _localized_feedback(last_player_feedback)
+    if h > best_height:
+        var old_best := int(best_height)
+        best_height = h
+        if int(best_height) != old_best:
+            _save_record()
+    height_label.text = ("%d m" % int(h)) if lang != "ru" else "%d м" % int(h)
+    record_label.text = _t("record") % int(best_height)
+    climb_progress.value = clampf(h, 0.0, TOP_HEIGHT)
+    _check_finish()
     # Fixed, slightly elevated chase camera: it follows the climber but does not orbit.
     # Fixed side-on camera: no orbit, depth travel, or perspective drift.
     var target_camera := Vector3(player.global_position.x, player.global_position.y + 2.25, 18.0)
@@ -693,7 +963,7 @@ func _process(delta: float) -> void:
     camera.look_at(player.global_position + Vector3(0, 2.25, 0), Vector3.UP)
     if player.global_position.y < -8.0 and not game_over:
         game_over = true
-        status_label.text = "Падение! Нажми ↻, чтобы вернуться к контрольной точке."
+        status_label.text = _t("fall")
         restart_button.visible = true
 
 func _check_checkpoint() -> void:
@@ -701,12 +971,16 @@ func _check_checkpoint() -> void:
         if player.global_position.distance_to(checkpoint_positions[i]) < 1.45:
             active_checkpoint = i + 1
             status_label.text = "КОНТРОЛЬНАЯ ТОЧКА %d СОХРАНЕНА!" % active_checkpoint
-            checkpoint_label.text = "◆  КОНТРОЛЬНАЯ ТОЧКА  •  %d" % active_checkpoint
+            checkpoint_label.text = _t("checkpoint") if active_checkpoint == 0 else _t("checkpoint_n") % active_checkpoint
 
 func _reset_player() -> void:
     get_tree().paused = false
+    player.release_pointer()
+    finished = false
+    if is_instance_valid(win_overlay):
+        win_overlay.visible = false
     if is_instance_valid(pause_button):
-        pause_button.text = "Ⅱ"
+        pause_button.text = "II"
     if is_instance_valid(pause_overlay):
         pause_overlay.visible = false
     var respawn := Vector3(0, 1.0, 0)
@@ -719,3 +993,85 @@ func _reset_player() -> void:
     game_over = false
     restart_button.visible = false
     status_label.text = "КАСАЙСЯ ЭКРАНА И ВЕДИ СЕРП  •  ЦЕПЛЯЙСЯ ЗА КРАЯ"
+
+
+func _restart_run() -> void:
+    active_checkpoint = 0
+    checkpoint_label.text = "СТАРТ  •  КП 0"
+    _reset_player()
+
+func _check_finish() -> void:
+    if finished:
+        return
+    if player.global_position.distance_to(finish_position) < 1.1:
+        finished = true
+        player.release_pointer()
+        win_label.text = _t("win") % int(best_height)
+        win_overlay.visible = true
+        _save_record()
+
+func _build_win_overlay(hud: CanvasLayer) -> void:
+    win_overlay = Control.new()
+    win_overlay.name = "WinOverlay"
+    win_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    win_overlay.visible = false
+    win_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+    hud.add_child(win_overlay)
+
+    var dim := ColorRect.new()
+    dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    dim.color = Color(0.008, 0.018, 0.028, 0.72)
+    win_overlay.add_child(dim)
+
+    var card := PanelContainer.new()
+    card.anchor_left = 0.5
+    card.anchor_right = 0.5
+    card.anchor_top = 0.5
+    card.anchor_bottom = 0.5
+    card.offset_left = -190
+    card.offset_right = 190
+    card.offset_top = -145
+    card.offset_bottom = 145
+    card.add_theme_stylebox_override("panel", _hud_panel_style(Color(0.045, 0.075, 0.09, 0.99)))
+    win_overlay.add_child(card)
+
+    var box := VBoxContainer.new()
+    box.alignment = BoxContainer.ALIGNMENT_CENTER
+    box.add_theme_constant_override("separation", 15)
+    card.add_child(box)
+
+    win_label = Label.new()
+    win_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    win_label.add_theme_font_size_override("font_size", 28)
+    win_label.add_theme_color_override("font_color", Color(1.0, 0.84, 0.60))
+    box.add_child(win_label)
+
+    var again := Button.new()
+    again.text = _t("again")
+    win_again_ref = again
+    again.custom_minimum_size = Vector2(300, 54)
+    _style_hud_button(again, Color(0.08, 0.42, 0.36, 1.0))
+    again.pressed.connect(_restart_run)
+    box.add_child(again)
+
+    var stay := Button.new()
+    stay.text = _t("stay")
+    win_stay_ref = stay
+    stay.custom_minimum_size = Vector2(300, 48)
+    _style_hud_button(stay, Color(0.22, 0.14, 0.11, 1.0))
+    stay.pressed.connect(func(): win_overlay.visible = false)
+    box.add_child(stay)
+
+func _load_record() -> void:
+    var cfg := ConfigFile.new()
+    if cfg.load(SAVE_PATH) == OK:
+        best_height = float(cfg.get_value("progress", "best_height", 0.0))
+
+func _save_record() -> void:
+    var cfg := ConfigFile.new()
+    cfg.set_value("progress", "best_height", best_height)
+    cfg.save(SAVE_PATH)
+
+func _notification(what: int) -> void:
+    if what == NOTIFICATION_APPLICATION_PAUSED or what == NOTIFICATION_WM_CLOSE_REQUEST:
+        _save_record()
