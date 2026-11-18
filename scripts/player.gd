@@ -345,7 +345,7 @@ func _query_scythe_collision(angle: float) -> Dictionary:
             var contact := space.get_rest_info(query)
             if contact.is_empty():
                 var candidate: Dictionary = overlaps[0]
-                contact = {"position": world_point, "collider": candidate.get("collider"), "normal": (world_point - hammer_pivot.global_position).normalized()}
+                contact = {"point": world_point, "collider": candidate.get("collider"), "normal": (world_point - hammer_pivot.global_position).normalized()}
             return contact
     return {}
 
@@ -357,7 +357,7 @@ func _try_lock_scythe_angle(previous_angle: float, next_angle: float) -> bool:
         var contact := _query_scythe_collision(sample_angle)
         if not contact.is_empty():
             scythe_contact_valid = true
-            scythe_contact_point = contact.get("position", hammer_pivot.global_position)
+            scythe_contact_point = contact.get("point", hammer_pivot.global_position)
             scythe_contact_point.z = PLAY_PLANE_Z
             scythe_contact_collider = contact.get("collider")
             return false
