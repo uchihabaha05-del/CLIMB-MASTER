@@ -376,7 +376,7 @@ func _build_hud() -> void:
     vbox.add_child(height_label)
 
     status_label = Label.new()
-    status_label.text = "Веди молот пальцем и отпусти для зацепа. Нажми ещё раз, чтобы отпустить."
+    status_label.text = "Веди серп пальцем. При касании препятствия он остановится; отпусти для зацепа."
     vbox.add_child(status_label)
 
     var controls := HBoxContainer.new()
@@ -452,4 +452,4 @@ func _reset_player() -> void:
     player.reset_hammer()
     game_over = false
     restart_button.visible = false
-    status_label.text = "Веди молот пальцем и отпусти для зацепа. Нажми ещё раз, чтобы отпустить."
+    status_label.text = "Веди серп пальцем. При касании препятствия он остановится; отпусти для зацепа."
