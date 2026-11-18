@@ -41,6 +41,7 @@ var coin_count := 0
 var collectible_nodes: Array[Node3D] = []
 var pause_overlay: Control
 var moving_obstacles: Array[AnimatableBody3D] = []
+var obstacle_phases: Array[float] = []
 var obstacle_clock := 0.0
 var last_player_feedback := ""
 var lang := "ru"
@@ -495,6 +496,7 @@ func _build_obstacles() -> void:
         pivot.add_child(collision)
 
         moving_obstacles.append(obstacle)
+        obstacle_phases.append(float(data["phase"]))
         add_child(obstacle)
 
 
@@ -1065,7 +1067,8 @@ func _physics_process(delta: float) -> void:
     for i in range(moving_obstacles.size()):
         var obstacle := moving_obstacles[i]
         if is_instance_valid(obstacle):
-            obstacle.rotation.z = sin(obstacle_clock * (0.82 + float(i) * 0.13) + float(i) * 1.7) * 0.48
+            var phase := obstacle_phases[i] if i < obstacle_phases.size() else float(i) * 1.7
+            obstacle.rotation.z = sin(obstacle_clock * (0.82 + float(i) * 0.13) + phase) * 0.48
     for i in range(collectible_nodes.size()):
         var pickup := collectible_nodes[i]
         if is_instance_valid(pickup):
