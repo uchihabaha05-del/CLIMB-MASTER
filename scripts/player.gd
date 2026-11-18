@@ -28,6 +28,7 @@ func _ready() -> void:
     var pot_loaded := _add_imported_model("res://assets/models/cauldron.glb", 1.72, "ImportedCauldron")
     if not pot_loaded:
         _make_fallback_pot()
+    _make_player_collision()
     var human_loaded := _add_imported_model("res://assets/models/male-base-mesh-base_male.glb", 1.58, "ImportedClimber")
     if human_loaded:
         var human := get_node("ImportedClimber") as Node3D
@@ -126,6 +127,15 @@ func _make_fallback_pot() -> void:
         handle.rotation.y = PI * 0.5
         handle.material_override = handle_mat
         add_child(handle)
+
+func _make_player_collision() -> void:
+    var body_shape := CollisionShape3D.new()
+    var shape := CylinderShape3D.new()
+    shape.radius = 0.72
+    shape.height = 0.9
+    body_shape.shape = shape
+    body_shape.position.y = 0.15
+    add_child(body_shape)
 
 func _make_fallback_human() -> void:
     var skin := StandardMaterial3D.new()
