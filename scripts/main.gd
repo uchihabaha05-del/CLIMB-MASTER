@@ -38,19 +38,34 @@ func _build_world() -> void:
     _add_platform(Vector3(-1.2, 16.8, -6.0), Vector3(3.0, 0.55, 2.4), Color(0.31, 0.36, 0.42))
     _add_platform(Vector3(1.5, 20.0, -7.0), Vector3(3.5, 0.65, 3.0), Color(0.43, 0.36, 0.29))
 
+    # Climbable rock pillars now have matching physics colliders.
     for i in range(12):
-        var rock := MeshInstance3D.new()
+        var rock_body := StaticBody3D.new()
+        var rock_mesh := MeshInstance3D.new()
         var mesh := CylinderMesh.new()
-        mesh.top_radius = randf_range(0.35, 1.0)
-        mesh.bottom_radius = randf_range(0.7, 1.5)
-        mesh.height = randf_range(3.0, 8.0)
-        rock.mesh = mesh
-        rock.position = Vector3(randf_range(-13, 13), randf_range(0, 17), randf_range(-13, -9))
-        rock.rotation.z = randf_range(-0.2, 0.2)
+        var top_radius := randf_range(0.45, 0.95)
+        var bottom_radius := randf_range(0.75, 1.35)
+        var rock_height := randf_range(3.0, 7.0)
+        mesh.top_radius = top_radius
+        mesh.bottom_radius = bottom_radius
+        mesh.height = rock_height
+        rock_mesh.mesh = mesh
         var mat := StandardMaterial3D.new()
         mat.albedo_color = Color(0.17, 0.21, 0.25)
-        rock.material_override = mat
-        add_child(rock)
+        mat.roughness = 0.96
+        rock_mesh.material_override = mat
+        rock_body.add_child(rock_mesh)
+
+        var rock_collision := CollisionShape3D.new()
+        var rock_shape := CylinderShape3D.new()
+        rock_shape.radius = maxf(top_radius, bottom_radius)
+        rock_shape.height = rock_height
+        rock_collision.shape = rock_shape
+        rock_body.add_child(rock_collision)
+
+        rock_body.position = Vector3(randf_range(-13, 13), randf_range(0, 17), randf_range(-13, -9))
+        rock_body.rotation.z = randf_range(-0.2, 0.2)
+        add_child(rock_body)
 
 func _add_platform(pos: Vector3, size: Vector3, color: Color) -> void:
     var body := StaticBody3D.new()
@@ -102,7 +117,7 @@ func _build_hud() -> void:
     vbox.add_child(height_label)
 
     status_label = Label.new()
-    status_label.text = "Веди молот пальцем. Отпусти, чтобы зацепиться."
+    status_label.text = "Веди молот пальцем и отпусти для зацепа. Нажми ещё раз, чтобы отпустить."
     vbox.add_child(status_label)
 
     var controls := HBoxContainer.new()
@@ -159,4 +174,4 @@ func _reset_player() -> void:
     player.reset_hammer()
     game_over = false
     restart_button.visible = false
-    status_label.text = "Веди молот пальцем. Отпусти, чтобы зацепиться."
+    status_label.text = "Веди молот пальцем и отпусти для зацепа. Нажми ещё раз, чтобы отпустить."
