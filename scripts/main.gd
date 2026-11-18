@@ -21,7 +21,7 @@ const ROUTE_LEDGE_POSITIONS := [
     Vector2(1.35, 23.15)
 ]
 const LEDGE_SIZE := Vector3(2.75, 0.56, 2.35)
-const TOP_HEIGHT := 23.0
+const TOP_HEIGHT := 22.75
 const SAVE_PATH := "user://climb_master.cfg"
 var start_y := 0.0
 var best_height := 0.0
@@ -340,7 +340,7 @@ func _build_industrial_structures() -> void:
     rust.roughness = 0.78
 
     for side in [-1.0, 1.0]:
-        for level in range(3):
+        for level in range(4):
             var frame := Node3D.new()
             frame.position = Vector3(side * 4.8, 2.0 + float(level) * 6.0, -0.2)
             add_child(frame)
