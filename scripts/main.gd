@@ -21,6 +21,7 @@ func _ready() -> void:
     _build_world()
     _build_photogrammetry_boulders()
     _build_imported_obstacles()
+    _build_asset_course()
     _build_industrial_structures()
     _build_checkpoints()
     _build_obstacles()
@@ -265,6 +266,62 @@ func _find_obstacle_mesh(node: Node, target_name: String) -> MeshInstance3D:
         if found != null:
             return found
     return null
+
+
+func _build_asset_course() -> void:
+    # New scanned obstacle pack arranged as a readable difficulty curve.
+    # Each model is instanced from its own glTF so its authored materials remain intact.
+    var placements: Array[Dictionary] = [
+        # Lower climb: broad, forgiving surfaces that teach hooking and pushing.
+        {"file": "stump_with_roots", "position": Vector3(-2.0, 1.0, -0.55), "rotation": Vector3(0.0, 0.25, -0.12), "scale": 0.92},
+        {"file": "fallen_log", "position": Vector3(1.85, 2.85, -0.55), "rotation": Vector3(0.0, 0.0, 0.20), "scale": 0.88},
+        {"file": "crate_stack", "position": Vector3(-1.95, 4.7, -0.55), "rotation": Vector3(0.0, 0.18, -0.08), "scale": 0.82},
+        {"file": "broken_ladder", "position": Vector3(2.0, 6.55, -0.55), "rotation": Vector3(0.0, 0.0, -0.18), "scale": 0.9},
+
+        # Middle section: force the player to change hook angle and swing direction.
+        {"file": "rock_arch", "position": Vector3(-2.05, 8.2, -0.6), "rotation": Vector3(0.0, 0.0, 0.0), "scale": 0.78},
+        {"file": "tire_stack", "position": Vector3(2.0, 9.75, -0.55), "rotation": Vector3(0.0, 0.25, 0.08), "scale": 0.82},
+        {"file": "pipe_cluster", "position": Vector3(-2.0, 11.35, -0.55), "rotation": Vector3(0.0, 0.0, 0.12), "scale": 0.78},
+        {"file": "seesaw_plank", "position": Vector3(1.95, 13.0, -0.55), "rotation": Vector3(0.0, 0.0, -0.16), "scale": 0.82},
+        {"file": "broken_bridge", "position": Vector3(-2.0, 14.7, -0.6), "rotation": Vector3(0.0, 0.0, 0.10), "scale": 0.78},
+
+        # Upper climb: narrow footholds, sharp silhouettes and heavier machinery.
+        {"file": "ice_boulder", "position": Vector3(2.0, 16.25, -0.55), "rotation": Vector3(0.0, 0.55, -0.12), "scale": 0.78},
+        {"file": "ice_spikes", "position": Vector3(-1.95, 17.85, -0.6), "rotation": Vector3(0.0, 0.2, 0.0), "scale": 0.72},
+        {"file": "giant_gears", "position": Vector3(2.0, 19.55, -0.6), "rotation": Vector3(0.0, 0.0, 0.12), "scale": 0.72},
+        {"file": "giant_anchor", "position": Vector3(-2.0, 21.2, -0.6), "rotation": Vector3(0.0, 0.0, -0.12), "scale": 0.76},
+        {"file": "spiral_stairs", "position": Vector3(1.95, 23.0, -0.6), "rotation": Vector3(0.0, 0.0, 0.0), "scale": 0.72},
+        {"file": "church_bell", "position": Vector3(-1.9, 24.9, -0.6), "rotation": Vector3(0.0, 0.0, 0.0), "scale": 0.72},
+        {"file": "shipping_container", "position": Vector3(2.0, 26.8, -0.65), "rotation": Vector3(0.0, 0.0, 0.08), "scale": 0.72}
+    ]
+
+    for item in placements:
+        var asset_path := "res://assets/" + str(item["file"]) + ".gltf"
+        var packed := load(asset_path) as PackedScene
+        if packed == null:
+            push_warning("Could not load course asset: " + asset_path)
+            continue
+        var instance := packed.instantiate() as Node3D
+        if instance == null:
+            push_warning("Course asset root is not Node3D: " + asset_path)
+            continue
+        instance.name = "Course_" + str(item["file"])
+        instance.position = item["position"]
+        instance.rotation = item["rotation"]
+        instance.scale = Vector3.ONE * float(item["scale"])
+        add_child(instance)
+        _add_asset_collisions(instance)
+
+
+func _add_asset_collisions(node: Node) -> void:
+    # Convex colliders are cheaper than triangle meshes on mobile.
+    if node is MeshInstance3D:
+        var mesh_instance := node as MeshInstance3D
+        if mesh_instance.mesh != null:
+            mesh_instance.create_convex_collision(true, true)
+    for child in node.get_children():
+        if child is not StaticBody3D:
+            _add_asset_collisions(child)
 
 func _build_industrial_structures() -> void:
     # Weathered steel frames make the climb feel like an abandoned quarry.
