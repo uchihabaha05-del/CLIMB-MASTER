@@ -414,7 +414,7 @@ func _build_checkpoints() -> void:
     _build_finish_marker()
 
 func _build_finish_marker() -> void:
-        var summit: Vector2 = ROUTE_LEDGE_POSITIONS[ROUTE_LEDGE_POSITIONS.size() - 1]
+    var summit: Vector2 = ROUTE_LEDGE_POSITIONS[ROUTE_LEDGE_POSITIONS.size() - 1]
     finish_position = Vector3(summit.x, summit.y + 0.58, 0.0)
     var marker := Node3D.new()
     marker.name = "SummitMarker"
