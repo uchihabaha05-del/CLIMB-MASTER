@@ -82,12 +82,13 @@ func _build_world() -> void:
         mesh.top_radius = top_radius
         mesh.bottom_radius = bottom_radius
         mesh.height = rock_height
-        mesh.radial_segments = 7
+        mesh.radial_segments = 9
         rock_mesh.mesh = mesh
         var mat := StandardMaterial3D.new()
         var rock_tone := randf_range(-0.025, 0.035)
         mat.albedo_color = Color(0.17 + rock_tone, 0.21 + rock_tone, 0.25 + rock_tone)
-        mat.roughness = 0.98
+        mat.roughness = 0.96
+        mat.metallic = 0.03
         rock_mesh.material_override = mat
         rock_body.add_child(rock_mesh)
 
@@ -114,7 +115,37 @@ func _build_world() -> void:
         rock_collision.shape = rock_shape
         rock_body.add_child(rock_collision)
 
-        rock_body.position = Vector3(randf_range(-13, 13), randf_range(0, 17), randf_range(-13, -9))
+        # Broken stone plates and metallic climbing anchors add readable silhouettes.
+        for ledge_index in range(3):
+            var ledge := MeshInstance3D.new()
+            var ledge_mesh := BoxMesh.new()
+            ledge_mesh.size = Vector3(randf_range(0.65, 1.25), 0.16, 0.55)
+            ledge.mesh = ledge_mesh
+            ledge.position = Vector3(randf_range(-0.35, 0.35), randf_range(-rock_height * 0.35, rock_height * 0.35), bottom_radius * 0.72)
+            ledge.rotation.z = randf_range(-0.18, 0.18)
+            var stone_edge := StandardMaterial3D.new()
+            stone_edge.albedo_color = Color(0.34, 0.35, 0.36)
+            stone_edge.roughness = 0.9
+            ledge.material_override = stone_edge
+            rock_body.add_child(ledge)
+
+        for bolt_index in range(2):
+            var bolt := MeshInstance3D.new()
+            var bolt_mesh := CylinderMesh.new()
+            bolt_mesh.top_radius = 0.075
+            bolt_mesh.bottom_radius = 0.075
+            bolt_mesh.height = 0.22
+            bolt.mesh = bolt_mesh
+            bolt.rotation.z = PI * 0.5
+            bolt.position = Vector3(randf_range(-0.45, 0.45), randf_range(-rock_height * 0.3, rock_height * 0.3), bottom_radius * 0.88)
+            var steel := StandardMaterial3D.new()
+            steel.albedo_color = Color(0.22, 0.27, 0.30)
+            steel.metallic = 0.92
+            steel.roughness = 0.24
+            bolt.material_override = steel
+            rock_body.add_child(bolt)
+
+        rock_body.position = Vector3(randf_range(-5.5, 5.5), randf_range(1.0, 19.0), randf_range(-3.2, -1.8))
         rock_body.rotation.z = randf_range(-0.2, 0.2)
         add_child(rock_body)
 
@@ -186,8 +217,9 @@ func _build_player() -> void:
 
 func _build_camera() -> void:
     camera = Camera3D.new()
-    camera.position = Vector3(0, 6, 13)
-    camera.rotation_degrees = Vector3(-18, 0, 0)
+    camera.position = Vector3(0, 4.8, 12.5)
+    camera.rotation_degrees = Vector3(-12, 0, 0)
+    camera.fov = 48.0
     camera.current = true
     add_child(camera)
 
@@ -250,11 +282,10 @@ func _process(delta: float) -> void:
     _check_checkpoint()
     peak_y = maxf(peak_y, h)
     height_label.text = "ВЫСОТА: %d м  |  РЕКОРД: %d м" % [int(h), int(peak_y)]
-    camera.global_position = camera.global_position.lerp(
-        Vector3(player.global_position.x * 0.25, player.global_position.y + 5.5, player.global_position.z + 13.0),
-        1.0 - exp(-3.0 * delta)
-    )
-    camera.look_at(player.global_position + Vector3(0, 1.3, 0), Vector3.UP)
+    # Fixed, slightly elevated chase camera: it follows the climber but does not orbit.
+    var target_camera := Vector3(player.global_position.x * 0.18, player.global_position.y + 4.2, player.global_position.z + 12.5)
+    camera.global_position = camera.global_position.lerp(target_camera, 1.0 - exp(-4.2 * delta))
+    camera.look_at(player.global_position + Vector3(0, 1.0, 0), Vector3.UP)
     if player.global_position.y < -8.0 and not game_over:
         game_over = true
         status_label.text = "Падение! Возврат к контрольной точке."
