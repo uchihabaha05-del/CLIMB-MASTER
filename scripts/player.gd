@@ -17,6 +17,7 @@ var hammer_head: Node3D
 var aim_angle := -0.72
 var aim_elevation := 0.0
 var dragging := false
+var release_tap := false
 var anchored := false
 var anchor_point := Vector3.ZERO
 var rope_length := 0.0
@@ -128,22 +129,32 @@ func reset_hammer() -> void:
 func _unhandled_input(event: InputEvent) -> void:
     if event is InputEventScreenTouch:
         if event.pressed:
-            if anchored and not dragging:
+            if anchored:
                 _release_hook()
-            dragging = true
+                release_tap = true
+                dragging = false
+            else:
+                dragging = true
         else:
-            if dragging:
+            if release_tap:
+                release_tap = false
+            elif dragging:
                 _try_hook()
             dragging = false
     elif event is InputEventScreenDrag and dragging:
         _aim_from_drag(event.relative)
     elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
         if event.pressed:
-            if anchored and not dragging:
+            if anchored:
                 _release_hook()
-            dragging = true
+                release_tap = true
+                dragging = false
+            else:
+                dragging = true
         else:
-            if dragging:
+            if release_tap:
+                release_tap = false
+            elif dragging:
                 _try_hook()
             dragging = false
     elif event is InputEventMouseMotion and dragging:
