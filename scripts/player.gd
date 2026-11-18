@@ -346,7 +346,9 @@ func _query_scythe_collision(angle: float) -> Dictionary:
             if contact.is_empty():
                 var candidate: Dictionary = overlaps[0]
                 contact = {"point": world_point, "collider": candidate.get("collider"), "normal": (world_point - hammer_pivot.global_position).normalized()}
-            return contact
+            var surface_normal: Vector3 = contact.get("normal", Vector3.ZERO)
+            if surface_normal.length_squared() > 0.01:
+                return contact
     return {}
 
 func _try_lock_scythe_angle(previous_angle: float, next_angle: float) -> bool:
@@ -423,18 +425,21 @@ func _physics_process(delta: float) -> void:
         var contact := _query_scythe_collision(aim_angle)
         if not contact.is_empty():
             scythe_contact_valid = true
-            scythe_contact_point = contact.get("position", hammer_pivot.global_position)
+            scythe_contact_point = contact.get("point", hammer_pivot.global_position)
             var normal: Vector3 = contact.get("normal", (scythe_contact_point - hammer_pivot.global_position).normalized())
             normal.z = 0.0
             normal = normal.normalized()
             if normal.length_squared() > 0.1:
                 # Surface reaction lifts or swings the whole cauldron.
                 var contact_strength := clampf(1.0 + absf(swing_delta) * 2.4, 1.0, 2.6)
-                velocity += normal * 34.0 * contact_strength * delta
-                var lever := scythe_contact_point - global_position
-                var tangent := Vector3(-lever.y, lever.x, 0.0).normalized()
-                if tangent.length_squared() > 0.1:
-                    velocity += tangent * clampf(swing_delta * 8.0, -2.8, 2.8)
+                var lever_arm := scythe_contact_point - global_position
+                var torque_direction := Vector3(-lever_arm.y, lever_arm.x, 0.0).normalized()
+                var push_direction := normal
+                if torque_direction.length_squared() > 0.1 and absf(swing_delta) > 0.015:
+                    push_direction = (normal + torque_direction * signf(swing_delta) * 0.42).normalized()
+                velocity += push_direction * MAX_HOOK_ACCEL * contact_strength * delta
+                if torque_direction.length_squared() > 0.1:
+                    velocity += torque_direction * clampf(swing_delta * PUMP_ACCEL, -3.2, 3.2)
                 swing_delta = 0.0
                 # Keep a small upward component when bracing against a near-vertical wall.
                 if absf(normal.y) < 0.28:
