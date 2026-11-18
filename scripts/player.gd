@@ -319,10 +319,15 @@ func _scythe_sample_points() -> Array[Vector3]:
         Vector3(0.0, 1.15, 0.0),
         Vector3(0.0, 1.70, 0.0),
         Vector3(0.0, 2.15, 0.0),
+        Vector3(0.22, 2.18, 0.0),
         Vector3(0.38, 2.25, 0.0),
+        Vector3(0.56, 2.36, 0.0),
         Vector3(0.74, 2.48, 0.0),
+        Vector3(0.90, 2.61, 0.0),
         Vector3(1.03, 2.76, 0.0),
+        Vector3(1.12, 2.91, 0.0),
         Vector3(1.18, 3.08, 0.0),
+        Vector3(1.18, 3.22, 0.0),
         Vector3(1.16, 3.37, 0.0),
         Vector3(0.98, 3.58, 0.0),
         Vector3(0.72, 3.72, 0.0)
@@ -488,8 +493,16 @@ func _try_hook() -> void:
         return
     _update_hammer_pose()
 
-    # If the blade touched a solid object while aiming, hook that exact contact.
+    # Check the entire current blade before falling back to a single ray.
     var hit: Dictionary = {}
+    if not scythe_contact_valid:
+        var current_contact := _query_scythe_collision(aim_angle)
+        if not current_contact.is_empty():
+            scythe_contact_valid = true
+            scythe_contact_point = current_contact.get("position", hammer_head.global_position)
+            scythe_contact_point.z = PLAY_PLANE_Z
+            scythe_contact_collider = current_contact.get("collider")
+    # If the blade touched a solid object while aiming, hook that exact contact.
     if scythe_contact_valid:
         hit = {"position": scythe_contact_point, "collider": scythe_contact_collider}
     else:
