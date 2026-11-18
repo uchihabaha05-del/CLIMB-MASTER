@@ -320,26 +320,29 @@ func _make_scythe() -> void:
     ])
     var blade_surface := SurfaceTool.new()
     blade_surface.begin(Mesh.PRIMITIVE_TRIANGLES)
-    var center := Vector2.ZERO
-    for point in outline:
-        center += point
-    center /= float(outline.size())
+    # Triangulate the concave crescent outline so the blade stays a clean solid shape.
+    var triangles := Geometry2D.triangulate_polygon(outline)
+    for i in range(0, triangles.size(), 3):
+        var a: Vector2 = outline[triangles[i]]
+        var b: Vector2 = outline[triangles[i + 1]]
+        var d: Vector2 = outline[triangles[i + 2]]
+        blade_surface.add_vertex(Vector3(a.x, a.y, 0.075))
+        blade_surface.add_vertex(Vector3(b.x, b.y, 0.075))
+        blade_surface.add_vertex(Vector3(d.x, d.y, 0.075))
+        blade_surface.add_vertex(Vector3(a.x, a.y, -0.075))
+        blade_surface.add_vertex(Vector3(d.x, d.y, -0.075))
+        blade_surface.add_vertex(Vector3(b.x, b.y, -0.075))
 
     for i in range(outline.size()):
         var next_i := (i + 1) % outline.size()
-        blade_surface.add_vertex(Vector3(center.x, center.y, 0.075))
-        blade_surface.add_vertex(Vector3(outline[i].x, outline[i].y, 0.075))
-        blade_surface.add_vertex(Vector3(outline[next_i].x, outline[next_i].y, 0.075))
-        blade_surface.add_vertex(Vector3(center.x, center.y, -0.075))
-        blade_surface.add_vertex(Vector3(outline[next_i].x, outline[next_i].y, -0.075))
-        blade_surface.add_vertex(Vector3(outline[i].x, outline[i].y, -0.075))
-        var next_point := outline[next_i]
-        blade_surface.add_vertex(Vector3(outline[i].x, outline[i].y, 0.075))
-        blade_surface.add_vertex(Vector3(outline[i].x, outline[i].y, -0.075))
-        blade_surface.add_vertex(Vector3(next_point.x, next_point.y, -0.075))
-        blade_surface.add_vertex(Vector3(outline[i].x, outline[i].y, 0.075))
-        blade_surface.add_vertex(Vector3(next_point.x, next_point.y, -0.075))
-        blade_surface.add_vertex(Vector3(next_point.x, next_point.y, 0.075))
+        var p0: Vector2 = outline[i]
+        var p1: Vector2 = outline[next_i]
+        blade_surface.add_vertex(Vector3(p0.x, p0.y, 0.075))
+        blade_surface.add_vertex(Vector3(p0.x, p0.y, -0.075))
+        blade_surface.add_vertex(Vector3(p1.x, p1.y, -0.075))
+        blade_surface.add_vertex(Vector3(p0.x, p0.y, 0.075))
+        blade_surface.add_vertex(Vector3(p1.x, p1.y, -0.075))
+        blade_surface.add_vertex(Vector3(p1.x, p1.y, 0.075))
 
     blade_surface.generate_normals()
     var blade := MeshInstance3D.new()
