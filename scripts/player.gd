@@ -54,28 +54,28 @@ func _apply_seated_pose(root: Node) -> void:
         var pose := Quaternion.IDENTITY
         var matched := false
 
-        if bone_name.contains("leftupperarm") or bone_name.contains("upperarm_l") or bone_name.contains("leftarm"):
+        if bone_name.contains("leftupperarm") or bone_name.contains("upperarm.l") or bone_name.contains("upperarml") or bone_name.contains("leftarm"):
             pose = Quaternion(Vector3.FORWARD, deg_to_rad(-48.0))
             matched = true
-        elif bone_name.contains("rightupperarm") or bone_name.contains("upperarm_r") or bone_name.contains("rightarm"):
+        elif bone_name.contains("rightupperarm") or bone_name.contains("upperarm.r") or bone_name.contains("upperarmr") or bone_name.contains("rightarm"):
             pose = Quaternion(Vector3.FORWARD, deg_to_rad(48.0))
             matched = true
-        elif bone_name.contains("leftforearm") or bone_name.contains("lowerarm_l") or bone_name.contains("leftlowerarm"):
+        elif bone_name.contains("leftforearm") or bone_name.contains("lowerarm.l") or bone_name.contains("lowerarml") or bone_name.contains("leftlowerarm"):
             pose = Quaternion(Vector3.FORWARD, deg_to_rad(-72.0))
             matched = true
-        elif bone_name.contains("rightforearm") or bone_name.contains("lowerarm_r") or bone_name.contains("rightlowerarm"):
+        elif bone_name.contains("rightforearm") or bone_name.contains("lowerarm.r") or bone_name.contains("lowerarmr") or bone_name.contains("rightlowerarm"):
             pose = Quaternion(Vector3.FORWARD, deg_to_rad(72.0))
             matched = true
-        elif bone_name.contains("leftupleg") or bone_name.contains("leftthigh") or bone_name.contains("thigh_l"):
+        elif bone_name.contains("leftupleg") or bone_name.contains("leftthigh") or bone_name.contains("thigh.l") or bone_name.contains("thighl"):
             pose = Quaternion(Vector3.RIGHT, deg_to_rad(-72.0))
             matched = true
-        elif bone_name.contains("rightupleg") or bone_name.contains("rightthigh") or bone_name.contains("thigh_r"):
+        elif bone_name.contains("rightupleg") or bone_name.contains("rightthigh") or bone_name.contains("thigh.r") or bone_name.contains("thighr"):
             pose = Quaternion(Vector3.RIGHT, deg_to_rad(-72.0))
             matched = true
-        elif bone_name.contains("leftleg") or bone_name.contains("calf_l") or bone_name.contains("leftcalf"):
+        elif bone_name.contains("leftleg") or bone_name.contains("calf.l") or bone_name.contains("calfl") or bone_name.contains("leftcalf"):
             pose = Quaternion(Vector3.RIGHT, deg_to_rad(92.0))
             matched = true
-        elif bone_name.contains("rightleg") or bone_name.contains("calf_r") or bone_name.contains("rightcalf"):
+        elif bone_name.contains("rightleg") or bone_name.contains("calf.r") or bone_name.contains("calfr") or bone_name.contains("rightcalf"):
             pose = Quaternion(Vector3.RIGHT, deg_to_rad(92.0))
             matched = true
 
