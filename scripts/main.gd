@@ -85,83 +85,32 @@ func _build_world() -> void:
     _add_platform(Vector3(1.45, 16.8, 0.0), Vector3(3.0, 0.55, 2.4), Color(0.31, 0.36, 0.42))
     _add_platform(Vector3(-1.45, 20.0, 0.0), Vector3(3.5, 0.65, 3.0), Color(0.43, 0.36, 0.29))
 
-    # Climbable rock pillars now have matching physics colliders.
-    for i in range(12):
-        var rock_body := StaticBody3D.new()
-        var rock_mesh := MeshInstance3D.new()
-        var mesh := CylinderMesh.new()
-        var top_radius := randf_range(0.45, 0.95)
-        var bottom_radius := randf_range(0.75, 1.35)
-        var rock_height := randf_range(3.0, 7.0)
-        mesh.top_radius = top_radius
-        mesh.bottom_radius = bottom_radius
-        mesh.height = rock_height
-        mesh.radial_segments = 9
-        rock_mesh.mesh = mesh
-        var mat := StandardMaterial3D.new()
-        var rock_tone := randf_range(-0.025, 0.035)
-        mat.albedo_color = Color(0.17 + rock_tone, 0.21 + rock_tone, 0.25 + rock_tone)
-        mat.roughness = 0.96
-        mat.metallic = 0.03
-        rock_mesh.material_override = mat
-        rock_body.add_child(rock_mesh)
+    # Keep the central climbing lane readable. Natural cliff outcrops frame
+    # the route from the far left and right instead of spawning in front of it.
+    for side in [-1.0, 1.0]:
+        for level in range(6):
+            var outcrop := StaticBody3D.new()
+            outcrop.name = "CliffOutcrop_%s_%d" % ["L" if side < 0.0 else "R", level]
+            var rock := MeshInstance3D.new()
+            var rock_mesh := SphereMesh.new()
+            rock_mesh.radius = 1.0
+            rock_mesh.height = 1.65
+            rock.mesh = rock_mesh
+            rock.scale = Vector3(1.1, randf_range(1.0, 1.7), 0.75)
+            var rock_mat := StandardMaterial3D.new()
+            rock_mat.albedo_color = Color(0.16, 0.19, 0.22)
+            rock_mat.roughness = 0.98
+            rock.material_override = rock_mat
+            outcrop.add_child(rock)
+            var collision := CollisionShape3D.new()
+            var shape := SphereShape3D.new()
+            shape.radius = 0.9
+            collision.shape = shape
+            collision.scale = Vector3(1.1, 1.3, 0.85)
+            outcrop.add_child(collision)
+            outcrop.position = Vector3(side * 4.65, 1.5 + float(level) * 3.35, -0.25)
+            add_child(outcrop)
 
-        # Angular boulders break up the repeated pillar silhouette.
-        for chunk_index in range(4):
-            var chunk := MeshInstance3D.new()
-            var chunk_mesh := SphereMesh.new()
-            chunk_mesh.radius = randf_range(0.45, 0.9)
-            chunk_mesh.height = chunk_mesh.radius * 1.65
-            chunk.mesh = chunk_mesh
-            chunk.scale = Vector3(randf_range(0.8, 1.4), randf_range(0.65, 1.15), randf_range(0.75, 1.25))
-            chunk.position = Vector3(
-                randf_range(-bottom_radius * 0.72, bottom_radius * 0.72),
-                randf_range(-rock_height * 0.38, rock_height * 0.38),
-                randf_range(-bottom_radius * 0.5, bottom_radius * 0.5)
-            )
-            chunk.material_override = mat
-            rock_body.add_child(chunk)
-
-        var rock_collision := CollisionShape3D.new()
-        var rock_shape := CylinderShape3D.new()
-        rock_shape.radius = maxf(top_radius, bottom_radius)
-        rock_shape.height = rock_height
-        rock_collision.shape = rock_shape
-        rock_body.add_child(rock_collision)
-
-        # Broken stone plates and metallic climbing anchors add readable silhouettes.
-        for ledge_index in range(3):
-            var ledge := MeshInstance3D.new()
-            var ledge_mesh := BoxMesh.new()
-            ledge_mesh.size = Vector3(randf_range(0.65, 1.25), 0.16, 0.55)
-            ledge.mesh = ledge_mesh
-            ledge.position = Vector3(randf_range(-0.35, 0.35), randf_range(-rock_height * 0.35, rock_height * 0.35), bottom_radius * 0.72)
-            ledge.rotation.z = randf_range(-0.18, 0.18)
-            var stone_edge := StandardMaterial3D.new()
-            stone_edge.albedo_color = Color(0.34, 0.35, 0.36)
-            stone_edge.roughness = 0.9
-            ledge.material_override = stone_edge
-            rock_body.add_child(ledge)
-
-        for bolt_index in range(2):
-            var bolt := MeshInstance3D.new()
-            var bolt_mesh := CylinderMesh.new()
-            bolt_mesh.top_radius = 0.075
-            bolt_mesh.bottom_radius = 0.075
-            bolt_mesh.height = 0.22
-            bolt.mesh = bolt_mesh
-            bolt.rotation.z = PI * 0.5
-            bolt.position = Vector3(randf_range(-0.45, 0.45), randf_range(-rock_height * 0.3, rock_height * 0.3), bottom_radius * 0.88)
-            var steel := StandardMaterial3D.new()
-            steel.albedo_color = Color(0.22, 0.27, 0.30)
-            steel.metallic = 0.92
-            steel.roughness = 0.24
-            bolt.material_override = steel
-            rock_body.add_child(bolt)
-
-        rock_body.position = Vector3(randf_range(-2.2, 2.2), randf_range(1.0, 19.0), randf_range(-3.2, -1.8))
-        rock_body.rotation.z = randf_range(-0.2, 0.2)
-        add_child(rock_body)
 
 
 func _build_photogrammetry_boulders() -> void:
@@ -272,30 +221,17 @@ func _find_obstacle_mesh(node: Node, target_name: String) -> MeshInstance3D:
 
 
 func _build_asset_course() -> void:
-    # New scanned obstacle pack arranged as a readable difficulty curve.
-    # Each model is instanced from its own glTF so its authored materials remain intact.
+    # The route is a clear zig-zag. Obstacles are attached to the cliff edges,
+    # leaving the center open so the player can read each next move.
     var placements: Array[Dictionary] = [
-        # Lower climb: broad, forgiving surfaces that teach hooking and pushing.
-        {"file": "stump_with_roots", "position": Vector3(-2.0, 1.0, -0.55), "rotation": Vector3(0.0, 0.25, -0.12), "scale": 0.92},
-        {"file": "fallen_log", "position": Vector3(1.85, 2.85, -0.55), "rotation": Vector3(0.0, 0.0, 0.20), "scale": 0.88},
-        {"file": "crate_stack", "position": Vector3(-1.95, 4.7, -0.55), "rotation": Vector3(0.0, 0.18, -0.08), "scale": 0.82},
-        {"file": "broken_ladder", "position": Vector3(2.0, 6.55, -0.55), "rotation": Vector3(0.0, 0.0, -0.18), "scale": 0.9},
-
-        # Middle section: force the player to change hook angle and swing direction.
-        {"file": "rock_arch", "position": Vector3(-2.05, 8.2, -0.6), "rotation": Vector3(0.0, 0.0, 0.0), "scale": 0.78},
-        {"file": "tire_stack", "position": Vector3(2.0, 9.75, -0.55), "rotation": Vector3(0.0, 0.25, 0.08), "scale": 0.82},
-        {"file": "pipe_cluster", "position": Vector3(-2.0, 11.35, -0.55), "rotation": Vector3(0.0, 0.0, 0.12), "scale": 0.78},
-        {"file": "seesaw_plank", "position": Vector3(1.95, 13.0, -0.55), "rotation": Vector3(0.0, 0.0, -0.16), "scale": 0.82},
-        {"file": "broken_bridge", "position": Vector3(-2.0, 14.7, -0.6), "rotation": Vector3(0.0, 0.0, 0.10), "scale": 0.78},
-
-        # Upper climb: narrow footholds, sharp silhouettes and heavier machinery.
-        {"file": "ice_boulder", "position": Vector3(2.0, 16.25, -0.55), "rotation": Vector3(0.0, 0.55, -0.12), "scale": 0.78},
-        {"file": "ice_spikes", "position": Vector3(-1.95, 17.85, -0.6), "rotation": Vector3(0.0, 0.2, 0.0), "scale": 0.72},
-        {"file": "giant_gears", "position": Vector3(2.0, 19.55, -0.6), "rotation": Vector3(0.0, 0.0, 0.12), "scale": 0.72},
-        {"file": "giant_anchor", "position": Vector3(-2.0, 21.2, -0.6), "rotation": Vector3(0.0, 0.0, -0.12), "scale": 0.76},
-        {"file": "spiral_stairs", "position": Vector3(1.95, 23.0, -0.6), "rotation": Vector3(0.0, 0.0, 0.0), "scale": 0.72},
-        {"file": "church_bell", "position": Vector3(-1.9, 24.9, -0.6), "rotation": Vector3(0.0, 0.0, 0.0), "scale": 0.72},
-        {"file": "shipping_container", "position": Vector3(2.0, 26.8, -0.65), "rotation": Vector3(0.0, 0.0, 0.08), "scale": 0.72}
+        {"file": "fallen_log", "position": Vector3(-3.15, 1.15, -0.58), "rotation": Vector3(0.0, 0.12, 0.24), "scale": 0.78},
+        {"file": "crate_stack", "position": Vector3(3.1, 4.1, -0.58), "rotation": Vector3(0.0, -0.18, -0.08), "scale": 0.72},
+        {"file": "rock_arch", "position": Vector3(-3.25, 7.05, -0.62), "rotation": Vector3(0.0, 0.0, 0.0), "scale": 0.70},
+        {"file": "tire_stack", "position": Vector3(3.15, 10.0, -0.58), "rotation": Vector3(0.0, 0.25, 0.06), "scale": 0.72},
+        {"file": "pipe_cluster", "position": Vector3(-3.2, 12.95, -0.58), "rotation": Vector3(0.0, 0.0, 0.10), "scale": 0.68},
+        {"file": "broken_bridge", "position": Vector3(3.1, 15.85, -0.62), "rotation": Vector3(0.0, 0.0, -0.12), "scale": 0.70},
+        {"file": "ice_boulder", "position": Vector3(-3.15, 18.75, -0.58), "rotation": Vector3(0.0, 0.55, -0.10), "scale": 0.70},
+        {"file": "giant_chain", "position": Vector3(3.1, 19.2, -0.60), "rotation": Vector3(0.0, 0.0, 0.0), "scale": 0.58}
     ]
 
     for item in placements:
@@ -325,6 +261,7 @@ func _add_asset_collisions(node: Node) -> void:
     for child in node.get_children():
         if child is not StaticBody3D:
             _add_asset_collisions(child)
+
 
 func _build_industrial_structures() -> void:
     # Weathered steel frames make the climb feel like an abandoned quarry.
@@ -409,55 +346,65 @@ func _build_checkpoints() -> void:
         marker.add_child(beacon)
 
 func _build_obstacles() -> void:
-    # Rotating quarry beams create timing-based hazards across the ascent.
+    # Compact edge-mounted pendulums: hazards challenge timing without sealing
+    # the whole climbing lane like a flat wall across the screen.
     var hazard_material := StandardMaterial3D.new()
     hazard_material.albedo_color = Color(0.28, 0.095, 0.055)
     hazard_material.metallic = 0.72
-    hazard_material.roughness = 0.36
-    hazard_material.emission_enabled = true
-    hazard_material.emission = Color(0.42, 0.075, 0.018)
-    hazard_material.emission_energy_multiplier = 0.45
+    hazard_material.roughness = 0.34
 
     var warning_material := StandardMaterial3D.new()
     warning_material.albedo_color = Color(0.95, 0.34, 0.08)
-    warning_material.metallic = 0.35
+    warning_material.metallic = 0.4
     warning_material.emission_enabled = true
     warning_material.emission = Color(0.8, 0.12, 0.015)
-    warning_material.emission_energy_multiplier = 1.2
+    warning_material.emission_energy_multiplier = 1.1
 
-    var obstacle_heights := [5.8, 11.8, 17.8]
-    for i in range(obstacle_heights.size()):
+    var hazard_data := [
+        {"x": -3.45, "y": 5.75, "phase": 0.0},
+        {"x": 3.45, "y": 11.65, "phase": 1.8},
+        {"x": -3.45, "y": 17.55, "phase": 3.2}
+    ]
+    for i in range(hazard_data.size()):
+        var data: Dictionary = hazard_data[i]
         var obstacle := AnimatableBody3D.new()
-        obstacle.name = "RotatingHazard_%d" % i
-        obstacle.position = Vector3(0.0, obstacle_heights[i], 0.35)
+        obstacle.name = "EdgePendulum_%d" % i
+        obstacle.position = Vector3(float(data["x"]), float(data["y"]), 0.25)
         obstacle.sync_to_physics = true
         obstacle.add_to_group("climb_hazard")
 
-        var beam := MeshInstance3D.new()
-        var beam_mesh := BoxMesh.new()
-        beam_mesh.size = Vector3(4.8, 0.24, 0.48)
-        beam.mesh = beam_mesh
-        beam.material_override = hazard_material
-        obstacle.add_child(beam)
+        var pivot := Node3D.new()
+        obstacle.add_child(pivot)
+        var arm := MeshInstance3D.new()
+        var arm_mesh := CylinderMesh.new()
+        arm_mesh.top_radius = 0.075
+        arm_mesh.bottom_radius = 0.11
+        arm_mesh.height = 1.8
+        arm.mesh = arm_mesh
+        arm.position = Vector3(0.0, -0.9, 0.0)
+        arm.material_override = hazard_material
+        pivot.add_child(arm)
 
-        var beam_collision := CollisionShape3D.new()
-        var beam_shape := BoxShape3D.new()
-        beam_shape.size = Vector3(4.8, 0.28, 0.55)
-        beam_collision.shape = beam_shape
-        obstacle.add_child(beam_collision)
+        var weight := MeshInstance3D.new()
+        var weight_mesh := SphereMesh.new()
+        weight_mesh.radius = 0.32
+        weight_mesh.height = 0.64
+        weight.mesh = weight_mesh
+        weight.position = Vector3(0.0, -1.82, 0.0)
+        weight.material_override = warning_material
+        pivot.add_child(weight)
 
-        for side in [-1.0, 1.0]:
-            var warning_cap := MeshInstance3D.new()
-            var cap_mesh := SphereMesh.new()
-            cap_mesh.radius = 0.19
-            cap_mesh.height = 0.38
-            warning_cap.mesh = cap_mesh
-            warning_cap.position.x = side * 2.33
-            warning_cap.material_override = warning_material
-            obstacle.add_child(warning_cap)
+        var collision := CollisionShape3D.new()
+        var shape := CapsuleShape3D.new()
+        shape.radius = 0.24
+        shape.height = 2.0
+        collision.shape = shape
+        collision.position = Vector3(0.0, -0.95, 0.0)
+        pivot.add_child(collision)
 
         moving_obstacles.append(obstacle)
         add_child(obstacle)
+
 
 func _add_platform(pos: Vector3, size: Vector3, color: Color) -> void:
     var body := StaticBody3D.new()
@@ -726,7 +673,8 @@ func _process(delta: float) -> void:
     for i in range(moving_obstacles.size()):
         var obstacle := moving_obstacles[i]
         if is_instance_valid(obstacle):
-            obstacle.rotation.z = sin(obstacle_clock * (0.82 + float(i) * 0.13) + float(i) * 1.7) * 0.78
+            var pivot := obstacle.get_child(0) as Node3D
+            pivot.rotation.z = sin(obstacle_clock * (0.82 + float(i) * 0.13) + float(i) * 1.7) * 0.48
     if not is_instance_valid(player):
         return
     var h := maxf(0.0, player.global_position.y - start_y)
