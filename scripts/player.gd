@@ -343,7 +343,7 @@ func _query_scythe_collision(angle: float) -> Dictionary:
             var contact := space.get_rest_info(query)
             if contact.is_empty():
                 var candidate: Dictionary = overlaps[0]
-                contact = {"position": world_point, "collider": candidate.get("collider")}
+                contact = {"position": world_point, "collider": candidate.get("collider"), "normal": (world_point - hammer_pivot.global_position).normalized()}
             return contact
     return {}
 
@@ -417,7 +417,7 @@ func _physics_process(delta: float) -> void:
         if not contact.is_empty():
             scythe_contact_valid = true
             scythe_contact_point = contact.get("position", hammer_pivot.global_position)
-            var normal: Vector3 = contact.get("normal", (hammer_pivot.global_position - scythe_contact_point).normalized())
+            var normal: Vector3 = contact.get("normal", (scythe_contact_point - hammer_pivot.global_position).normalized())
             normal.z = 0.0
             normal = normal.normalized()
             if normal.length_squared() > 0.1:
