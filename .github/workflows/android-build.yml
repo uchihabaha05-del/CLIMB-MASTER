@@ -18,8 +18,10 @@ jobs:
           version: 4.3.0
           use-dotnet: false
 
-      - name: Install Android build tools
+      - name: Install Android SDK packages
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools platforms;android-35 build-tools;35.0.0
 
       - name: Install Java
         uses: actions/setup-java@v4
