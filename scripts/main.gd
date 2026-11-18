@@ -323,7 +323,8 @@ func _build_checkpoints() -> void:
         ring_mesh.inner_radius = 0.65
         ring_mesh.outer_radius = 0.82
         ring.mesh = ring_mesh
-        ring.rotation.x = PI * 0.5
+        # Keep the checkpoint ring facing the side-on camera.
+        ring.rotation = Vector3.ZERO
         var ring_mat := StandardMaterial3D.new()
         ring_mat.albedo_color = Color(0.15, 0.85, 0.62)
         ring_mat.emission_enabled = true
@@ -438,7 +439,7 @@ func _build_hud() -> void:
 
     var panel := PanelContainer.new()
     panel.position = Vector2(18, 16)
-    panel.custom_minimum_size = Vector2(285, 66)
+    panel.custom_minimum_size = Vector2(390, 78)
     hud.add_child(panel)
     var vbox := VBoxContainer.new()
     panel.add_child(vbox)
@@ -450,7 +451,7 @@ func _build_hud() -> void:
 
     status_label = Label.new()
     status_label.text = "Веди серп пальцем • цепляйся и отталкивайся"
-    status_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+    status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     vbox.add_child(status_label)
 
     # Only utility controls remain on screen. Movement is entirely finger-driven.
@@ -480,6 +481,7 @@ func _build_hud() -> void:
     reset_button.text = "↻"
     reset_button.tooltip_text = "Перезапуск"
     reset_button.custom_minimum_size = Vector2(70, 58)
+    reset_button.process_mode = Node.PROCESS_MODE_ALWAYS
     reset_button.add_theme_font_size_override("font_size", 28)
     reset_button.pressed.connect(_reset_player)
     controls.add_child(reset_button)
@@ -488,6 +490,7 @@ func _build_hud() -> void:
     restart_button.text = "Начать заново"
     restart_button.position = Vector2(18, 112)
     restart_button.visible = false
+    restart_button.process_mode = Node.PROCESS_MODE_ALWAYS
     restart_button.pressed.connect(_reset_player)
     hud.add_child(restart_button)
 
@@ -518,7 +521,7 @@ func _process(delta: float) -> void:
     camera.look_at(player.global_position + Vector3(0, 2.25, 0), Vector3.UP)
     if player.global_position.y < -8.0 and not game_over:
         game_over = true
-        status_label.text = "Падение! Возврат к контрольной точке."
+        status_label.text = "Падение! Нажми ↻, чтобы вернуться к контрольной точке."
         restart_button.visible = true
 
 func _check_checkpoint() -> void:
@@ -540,4 +543,4 @@ func _reset_player() -> void:
     player.reset_hammer()
     game_over = false
     restart_button.visible = false
-    status_label.text = "Проводи пальцем по экрану, чтобы направлять серп. Упирайся в камни и отталкивайся."
+    status_label.text = "Проводи пальцем по экрану, направляй серп и отталкивайся от камней."
