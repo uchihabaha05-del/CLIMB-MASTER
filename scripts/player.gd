@@ -36,9 +36,9 @@ func _ready() -> void:
     if human_loaded:
         var human := get_node("ImportedClimber") as Node3D
         # Keep the lower body inside the pot; the upper torso and head remain visible.
-        human.position = Vector3(0.0, 0.48, 0.12)
+        human.position = Vector3(0.0, -0.08, 0.12)
         human.rotation_degrees = Vector3(0.0, 180.0, 0.0)
-        # Keep the source rig intact until its exact bone map is verified.
+        _apply_seated_pose(human)
     else:
         _make_fallback_human()
     scythe_probe.radius = 0.22
@@ -372,16 +372,13 @@ func reset_hammer() -> void:
     hammer_pivot.rotation = Vector3.ZERO
     _update_hammer_pose()
 
-func _unhandled_input(event: InputEvent) -> void:
-    # One-finger drag (or left mouse drag on desktop) directly aims the scythe
-    # around the climber. Releasing the finger does not trigger an artificial hook.
+func _input(event: InputEvent) -> void:
+    # Read touch globally before GUI controls can consume it.
     if event is InputEventScreenTouch:
-        if event.pressed:
-            dragging = true
+        dragging = event.pressed
+        if dragging:
             pointer_position = event.position
             _aim_from_pointer(pointer_position)
-        else:
-            dragging = false
     elif event is InputEventScreenDrag and dragging:
         pointer_position = event.position
         _aim_from_pointer(pointer_position)
@@ -396,30 +393,13 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _aim_from_pointer(screen_position: Vector2) -> void:
     var active_camera := get_viewport().get_camera_3d()
-    if active_camera == null:
+    if active_camera == null or not is_instance_valid(hammer_pivot):
         return
     var pivot_screen := active_camera.unproject_position(hammer_pivot.global_position)
     var pointer_vector := screen_position - pivot_screen
-    if pointer_vector.length_squared() < 36.0:
+    if pointer_vector.length_squared() < 16.0:
         return
-
-    # Screen coordinates point down; convert to the game's fixed XY side plane.
-    var proposed_angle := atan2(-pointer_vector.y, pointer_vector.x) - PI * 0.5
-    proposed_angle = clampf(proposed_angle, -PI * 0.96, PI * 0.96)
-    var previous_angle := aim_angle
-    if _try_lock_scythe_angle(previous_angle, proposed_angle):
-        aim_angle = proposed_angle
-    else:
-        # The blade cannot pass through a solid surface. The blocked swing
-        # transfers a reaction impulse to the cauldron, like a physical tool.
-        var radius := scythe_contact_point - hammer_pivot.global_position
-        var tangent := Vector3(-radius.y, radius.x, 0.0).normalized()
-        var sweep_sign := signf(wrapf(proposed_angle - previous_angle, -PI, PI))
-        var push_strength := clampf(absf(wrapf(proposed_angle - previous_angle, -PI, PI)) * 18.0, 0.0, 7.5)
-        if tangent.length_squared() > 0.01 and push_strength > 0.0:
-            velocity += -tangent * sweep_sign * push_strength
-        hook_feedback = "Серп упёрся в поверхность — используй упор, чтобы оттолкнуться."
-    aim_elevation = 0.0
+    aim_angle = clampf(atan2(-pointer_vector.y, pointer_vector.x) - PI * 0.5, -PI, PI)
     _update_hammer_pose()
 
 func _update_hammer_pose() -> void:
@@ -430,8 +410,26 @@ func _physics_process(delta: float) -> void:
     if not is_on_floor():
         velocity.y -= GRAVITY * delta
 
-    # The player has no independent walk or jump controls: all movement comes
-    # from gravity and physical reactions when the scythe pushes against terrain.
+    # The held blade pushes against collision surfaces and transfers the reaction force to the cauldron.
+    scythe_contact_valid = false
+    if dragging and is_instance_valid(hammer_pivot):
+        var contact := _query_scythe_collision(aim_angle)
+        if not contact.is_empty():
+            scythe_contact_valid = true
+            scythe_contact_point = contact.get("position", hammer_pivot.global_position)
+            var normal: Vector3 = contact.get("normal", (hammer_pivot.global_position - scythe_contact_point).normalized())
+            normal.z = 0.0
+            normal = normal.normalized()
+            if normal.length_squared() > 0.1:
+                velocity += normal * 28.0 * delta
+                var tangent := Vector3(-normal.y, normal.x, 0.0)
+                velocity += tangent * clampf(aim_angle * 0.7, -0.8, 0.8) * delta
+            hook_feedback = "Есть упор! Веди серп дальше, чтобы подняться."
+        else:
+            hook_feedback = "Коснись экрана и веди серп к камню."
+
+    velocity.x = clampf(velocity.x, -MAX_HORIZONTAL_SPEED, MAX_HORIZONTAL_SPEED)
+    velocity.y = clampf(velocity.y, -13.0, 15.0)
     velocity.z = 0.0
     move_and_slide()
     velocity.z = 0.0
@@ -441,7 +439,6 @@ func _physics_process(delta: float) -> void:
         var collision := get_slide_collision(collision_index)
         var collider := collision.get_collider()
         if collider is Node and (collider as Node).is_in_group("climb_hazard"):
-            velocity += collision.get_normal() * 2.0
-            hook_feedback = "Опасное препятствие! Найди другой упор."
+            velocity += collision.get_normal() * 3.5
+            hook_feedback = "Опасное препятствие! Обойди его серпом."
             break
-
