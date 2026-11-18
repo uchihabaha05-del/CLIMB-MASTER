@@ -10,8 +10,9 @@ const HOOK_SPRING := 34.0
 const HOOK_DAMPING := 7.5
 const MAX_HOOK_ACCEL := 42.0
 const PUMP_ACCEL := 13.0
+const PLAY_PLANE_Z := 0.0
 
-var mobile := {"left": false, "right": false, "up": false}
+var mobile := {"left": false, "right": false}
 var hammer_pivot: Node3D
 var hammer_head: Node3D
 var aim_angle := -0.72
@@ -28,6 +29,7 @@ var posed_bones: Array[int] = []
 var hook_feedback := "Проведи пальцем, чтобы навести молот; отпусти для зацепа."
 
 func _ready() -> void:
+    global_position.z = PLAY_PLANE_Z
     var pot_loaded := _add_imported_model("res://assets/models/cauldron.glb", 1.72, "ImportedCauldron")
     if not pot_loaded:
         _make_fallback_pot()
@@ -328,13 +330,14 @@ func _unhandled_input(event: InputEvent) -> void:
         _aim_from_drag(event.relative)
 
 func _aim_from_drag(relative: Vector2) -> void:
-    aim_angle = clampf(aim_angle + relative.x * 0.009, -PI * 0.92, PI * 0.92)
-    aim_elevation = clampf(aim_elevation - relative.y * 0.006, -0.85, 0.85)
+    # Both screen axes rotate the hammer inside the fixed side-view XY plane.
+    aim_angle = clampf(aim_angle + (relative.x - relative.y) * 0.009, -PI * 0.92, PI * 0.92)
+    aim_elevation = 0.0
     _update_hammer_pose()
 
 func _update_hammer_pose() -> void:
     if is_instance_valid(hammer_pivot):
-        hammer_pivot.rotation = Vector3(aim_elevation, 0.0, aim_angle)
+        hammer_pivot.rotation = Vector3(0.0, 0.0, aim_angle)
 
 func _physics_process(delta: float) -> void:
     hook_cooldown = maxf(0.0, hook_cooldown - delta)
@@ -350,13 +353,15 @@ func _physics_process(delta: float) -> void:
 
     if not is_on_floor():
         velocity.y -= GRAVITY * delta
-    elif mobile["up"] or Input.is_action_just_pressed("ui_accept"):
-        velocity.y = 7.2
 
     if anchored:
         _apply_hook_physics(delta, horizontal)
 
+    # Lock all character movement to the original side-view plane (X/Y).
+    velocity.z = 0.0
     move_and_slide()
+    velocity.z = 0.0
+    global_position.z = PLAY_PLANE_Z
 
     # A hook remains attached to the world point, never to the moving player.
     if anchored and global_position.distance_to(anchor_point) > HAMMER_REACH * 2.6:
@@ -389,8 +394,6 @@ func _apply_hook_physics(delta: float, horizontal: float) -> void:
         velocity += tangent * PUMP_ACCEL * delta
     elif mobile["right"]:
         velocity -= tangent * PUMP_ACCEL * delta
-    if mobile["up"]:
-        velocity += direction * 8.0 * delta
 
 func _try_hook() -> void:
     if hook_cooldown > 0.0:
@@ -441,6 +444,7 @@ func _try_hook() -> void:
 
     if not hit.is_empty():
         anchor_point = hit.get("position", origin + direction * minf(distance, HAMMER_REACH))
+        anchor_point.z = PLAY_PLANE_Z
         var actual_distance := global_position.distance_to(anchor_point)
         rope_length = maxf(1.0, actual_distance - 0.65)
         anchored = true
