@@ -22,6 +22,8 @@ var aim_angle := -0.72
 var aim_elevation := 0.0
 var dragging := false
 var pointer_position := Vector2.ZERO
+var last_aim_angle := -0.72
+var swing_delta := 0.0
 var imported_skeleton: Skeleton3D
 var posed_bones: Array[int] = []
 var hook_feedback := "Веди серп пальцем по экрану. Упирайся лезвием в препятствия, чтобы отталкиваться."
@@ -365,6 +367,8 @@ func _try_lock_scythe_angle(previous_angle: float, next_angle: float) -> bool:
 
 func reset_hammer() -> void:
     aim_angle = -0.72
+    last_aim_angle = aim_angle
+    swing_delta = 0.0
     aim_elevation = 0.0
     dragging = false
     scythe_contact_valid = false
@@ -399,7 +403,10 @@ func _aim_from_pointer(screen_position: Vector2) -> void:
     var pointer_vector := screen_position - pivot_screen
     if pointer_vector.length_squared() < 16.0:
         return
-    aim_angle = clampf(atan2(-pointer_vector.y, pointer_vector.x) - PI * 0.5, -PI, PI)
+    var next_angle := clampf(atan2(-pointer_vector.y, pointer_vector.x) - PI * 0.5, -PI, PI)
+    swing_delta = wrapf(next_angle - aim_angle, -PI, PI)
+    last_aim_angle = aim_angle
+    aim_angle = next_angle
     _update_hammer_pose()
 
 func _update_hammer_pose() -> void:
@@ -421,15 +428,23 @@ func _physics_process(delta: float) -> void:
             normal.z = 0.0
             normal = normal.normalized()
             if normal.length_squared() > 0.1:
-                velocity += normal * 28.0 * delta
-                var tangent := Vector3(-normal.y, normal.x, 0.0)
-                velocity += tangent * clampf(aim_angle * 0.7, -0.8, 0.8) * delta
+                # Surface reaction lifts or swings the whole cauldron.
+                var contact_strength := clampf(1.0 + absf(swing_delta) * 2.4, 1.0, 2.6)
+                velocity += normal * 34.0 * contact_strength * delta
+                var lever := scythe_contact_point - global_position
+                var tangent := Vector3(-lever.y, lever.x, 0.0).normalized()
+                if tangent.length_squared() > 0.1:
+                    velocity += tangent * clampf(swing_delta * 8.0, -2.8, 2.8)
+                # Keep a small upward component when bracing against a near-vertical wall.
+                if absf(normal.y) < 0.28:
+                    velocity.y += 5.5 * delta
             hook_feedback = "Есть упор! Веди серп дальше, чтобы подняться."
         else:
             hook_feedback = "Коснись экрана и веди серп к камню."
 
+    swing_delta = move_toward(swing_delta, 0.0, 5.5 * delta)
     velocity.x = clampf(velocity.x, -MAX_HORIZONTAL_SPEED, MAX_HORIZONTAL_SPEED)
-    velocity.y = clampf(velocity.y, -13.0, 15.0)
+    velocity.y = clampf(velocity.y, -15.0, 18.0)
     velocity.z = 0.0
     move_and_slide()
     velocity.z = 0.0
