@@ -5,7 +5,7 @@ const GRAVITY := 19.0
 const MOVE_ACCEL := 8.0
 const AIR_STEER := 3.2
 const MAX_HORIZONTAL_SPEED := 7.5
-const HAMMER_REACH := 3.15
+const HAMMER_REACH := 4.8
 const HOOK_SPRING := 34.0
 const HOOK_DAMPING := 7.5
 const MAX_HOOK_ACCEL := 42.0
@@ -35,9 +35,9 @@ func _ready() -> void:
     if human_loaded:
         var human := get_node("ImportedClimber") as Node3D
         # Keep the lower body inside the pot; the upper torso and head remain visible.
-        human.position = Vector3(0.0, -0.12, -0.08)
+        human.position = Vector3(0.0, 0.48, 0.12)
         human.rotation_degrees = Vector3(0.0, 180.0, 0.0)
-        _apply_seated_pose(human)
+        # Keep the source rig intact until its exact bone map is verified.
     else:
         _make_fallback_human()
     _make_hammer()
@@ -392,8 +392,19 @@ func _try_hook() -> void:
     var query := PhysicsRayQueryParameters3D.create(origin, origin + direction * HAMMER_REACH)
     query.exclude = [get_rid()]
     query.collide_with_areas = false
-    var hit := get_world_3d().direct_space_state.intersect_ray(query)
-    if hit:
+    var space := get_world_3d().direct_space_state
+    var hit: Dictionary = {}
+    # A small fan of parallel rays makes the hammer forgiving on a phone screen.
+    var side := direction.cross(Vector3.FORWARD).normalized()
+    if side.length() < 0.1:
+        side = Vector3.RIGHT
+    for offset in [Vector3.ZERO, side * 0.14, -side * 0.14, Vector3.UP * 0.14, Vector3.DOWN * 0.14]:
+        query.from = origin + offset
+        query.to = origin + offset + direction * HAMMER_REACH
+        hit = space.intersect_ray(query)
+        if not hit.is_empty():
+            break
+    if not hit.is_empty():
         anchor_point = hit.position
         rope_length = maxf(1.05, global_position.distance_to(anchor_point))
         anchored = true
