@@ -37,19 +37,21 @@ func _build_world() -> void:
 
     var sky := Sky.new()
     var sky_material := ProceduralSkyMaterial.new()
-    sky_material.sky_top_color = Color(0.055, 0.12, 0.22)
-    sky_material.sky_horizon_color = Color(0.48, 0.58, 0.68)
-    sky_material.ground_bottom_color = Color(0.055, 0.065, 0.075)
-    sky_material.ground_horizon_color = Color(0.26, 0.30, 0.34)
-    sky_material.sun_angle_max = 18.0
+    # Warm sunset palette: violet upper sky, rose cloud-light and a bright orange horizon.
+    sky_material.sky_top_color = Color(0.105, 0.105, 0.25)
+    sky_material.sky_horizon_color = Color(0.96, 0.36, 0.19)
+    sky_material.ground_bottom_color = Color(0.075, 0.055, 0.10)
+    sky_material.ground_horizon_color = Color(0.56, 0.19, 0.16)
+    sky_material.sun_angle_max = 12.0
+    sky_material.energy_multiplier = 1.15
     sky.sky_material = sky_material
     environment.sky = sky
     environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-    environment.ambient_light_color = Color(0.62, 0.70, 0.82)
-    environment.ambient_light_energy = 0.72
+    environment.ambient_light_color = Color(0.92, 0.55, 0.43)
+    environment.ambient_light_energy = 0.82
     environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
     environment.fog_enabled = true
-    environment.fog_light_color = Color(0.42, 0.52, 0.62)
+    environment.fog_light_color = Color(0.78, 0.34, 0.27)
     environment.fog_density = 0.012
     env.environment = environment
     add_child(env)
@@ -57,8 +59,8 @@ func _build_world() -> void:
     var sun := DirectionalLight3D.new()
     sun.name = "MountainSun"
     sun.rotation_degrees = Vector3(-48.0, -32.0, 0.0)
-    sun.light_color = Color(1.0, 0.86, 0.69)
-    sun.light_energy = 1.35
+    sun.light_color = Color(1.0, 0.57, 0.34)
+    sun.light_energy = 1.55
     sun.shadow_enabled = true
     sun.directional_shadow_max_distance = 55.0
     add_child(sun)
@@ -426,7 +428,7 @@ func _build_camera() -> void:
     camera = Camera3D.new()
     camera.position = Vector3(0, 2.0, 18.0)
     camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-    camera.size = 16.5
+    camera.size = 8.8
     camera.current = true
     add_child(camera)
 
@@ -436,19 +438,19 @@ func _build_hud() -> void:
 
     var panel := PanelContainer.new()
     panel.position = Vector2(18, 16)
-    panel.custom_minimum_size = Vector2(320, 78)
+    panel.custom_minimum_size = Vector2(285, 66)
     hud.add_child(panel)
     var vbox := VBoxContainer.new()
     panel.add_child(vbox)
 
     height_label = Label.new()
     height_label.text = "ВЫСОТА: 0 м"
-    height_label.add_theme_font_size_override("font_size", 23)
+    height_label.add_theme_font_size_override("font_size", 19)
     vbox.add_child(height_label)
 
     status_label = Label.new()
-    status_label.text = "Проводи пальцем по экрану, чтобы направлять серп. Упирайся в камни и отталкивайся."
-    status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    status_label.text = "Веди серп пальцем • цепляйся и отталкивайся"
+    status_label.autowrap_mode = TextServer.AUTOWRAP_OFF
     vbox.add_child(status_label)
 
     # Only utility controls remain on screen. Movement is entirely finger-driven.
@@ -511,9 +513,9 @@ func _process(delta: float) -> void:
     height_label.text = "ВЫСОТА: %d м  |  РЕКОРД: %d м" % [int(h), int(peak_y)]
     # Fixed, slightly elevated chase camera: it follows the climber but does not orbit.
     # Fixed side-on camera: no orbit, depth travel, or perspective drift.
-    var target_camera := Vector3(player.global_position.x, player.global_position.y + 2.0, 18.0)
+    var target_camera := Vector3(player.global_position.x, player.global_position.y + 2.25, 18.0)
     camera.global_position = camera.global_position.lerp(target_camera, 1.0 - exp(-4.2 * delta))
-    camera.look_at(player.global_position + Vector3(0, 1.0, 0), Vector3.UP)
+    camera.look_at(player.global_position + Vector3(0, 2.25, 0), Vector3.UP)
     if player.global_position.y < -8.0 and not game_over:
         game_over = true
         status_label.text = "Падение! Возврат к контрольной точке."
