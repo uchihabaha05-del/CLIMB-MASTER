@@ -824,8 +824,15 @@ func _build_start_flow() -> void:
     bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     bg.color = Color(0.025, 0.045, 0.07, 1.0)
     start_overlay.add_child(bg)
+    var splash_art := TextureRect.new()
+    splash_art.texture = load("res://assets/summit_forge_splash.svg") as Texture2D
+    splash_art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+    splash_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+    splash_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+    splash_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    start_overlay.add_child(splash_art)
     var summit := Label.new()
-    summit.text = "▲"
+    summit.text = ""
     summit.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     summit.set_anchors_preset(Control.PRESET_CENTER_TOP)
     summit.position = Vector2(-180, 22)
