@@ -82,12 +82,30 @@ func _build_world() -> void:
         mesh.top_radius = top_radius
         mesh.bottom_radius = bottom_radius
         mesh.height = rock_height
+        mesh.radial_segments = 7
         rock_mesh.mesh = mesh
         var mat := StandardMaterial3D.new()
-        mat.albedo_color = Color(0.17, 0.21, 0.25)
-        mat.roughness = 0.96
+        var rock_tone := randf_range(-0.025, 0.035)
+        mat.albedo_color = Color(0.17 + rock_tone, 0.21 + rock_tone, 0.25 + rock_tone)
+        mat.roughness = 0.98
         rock_mesh.material_override = mat
         rock_body.add_child(rock_mesh)
+
+        # Angular boulders break up the repeated pillar silhouette.
+        for chunk_index in range(4):
+            var chunk := MeshInstance3D.new()
+            var chunk_mesh := SphereMesh.new()
+            chunk_mesh.radius = randf_range(0.45, 0.9)
+            chunk_mesh.height = chunk_mesh.radius * 1.65
+            chunk.mesh = chunk_mesh
+            chunk.scale = Vector3(randf_range(0.8, 1.4), randf_range(0.65, 1.15), randf_range(0.75, 1.25))
+            chunk.position = Vector3(
+                randf_range(-bottom_radius * 0.72, bottom_radius * 0.72),
+                randf_range(-rock_height * 0.38, rock_height * 0.38),
+                randf_range(-bottom_radius * 0.5, bottom_radius * 0.5)
+            )
+            chunk.material_override = mat
+            rock_body.add_child(chunk)
 
         var rock_collision := CollisionShape3D.new()
         var rock_shape := CylinderShape3D.new()
