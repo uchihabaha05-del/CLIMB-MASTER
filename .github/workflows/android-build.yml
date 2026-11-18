@@ -53,6 +53,9 @@ jobs:
       - name: Import project
         run: godot --headless --editor --path . --quit
 
+      - name: Smoke test the playable scene
+        run: godot --headless --path . --quit-after 120
+
       - name: Diagnose Android export configuration
         shell: bash
         run: |
