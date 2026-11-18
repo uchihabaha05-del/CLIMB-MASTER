@@ -15,6 +15,7 @@ var checkpoint_label: Label
 
 func _ready() -> void:
     _build_world()
+    _build_photogrammetry_boulders()
     _build_industrial_structures()
     _build_checkpoints()
     _build_player()
@@ -149,6 +150,43 @@ func _build_world() -> void:
         rock_body.position = Vector3(randf_range(-5.5, 5.5), randf_range(1.0, 19.0), randf_range(-3.2, -1.8))
         rock_body.rotation.z = randf_range(-0.2, 0.2)
         add_child(rock_body)
+
+
+func _build_photogrammetry_boulders() -> void:
+    # Real photogrammetry scan; convex collision keeps the mobile physics cost manageable.
+    var boulder_scene := load("res://assets/models/namaqualand_boulder_05_2k.gltf") as PackedScene
+    if boulder_scene == null:
+        push_warning("Photogrammetry boulder could not be loaded.")
+        return
+
+    var placements: Array[Dictionary] = [
+        {"position": Vector3(-3.8, 1.25, -1.35), "rotation": Vector3(0.12, 0.35, -0.18), "scale": 2.65},
+        {"position": Vector3(3.7, 4.25, -1.55), "rotation": Vector3(-0.16, 1.15, 0.22), "scale": 2.85},
+        {"position": Vector3(-3.65, 7.25, -1.45), "rotation": Vector3(0.08, 2.1, -0.12), "scale": 2.7},
+        {"position": Vector3(3.75, 10.15, -1.5), "rotation": Vector3(-0.1, 0.55, 0.16), "scale": 2.9},
+        {"position": Vector3(-3.7, 13.25, -1.4), "rotation": Vector3(0.14, 1.65, -0.2), "scale": 2.75},
+        {"position": Vector3(3.55, 16.35, -1.5), "rotation": Vector3(-0.12, 2.55, 0.14), "scale": 2.85}
+    ]
+
+    for placement in placements:
+        var boulder := boulder_scene.instantiate() as Node3D
+        if boulder == null:
+            continue
+        boulder.position = placement["position"]
+        boulder.rotation = placement["rotation"]
+        boulder.scale = Vector3.ONE * float(placement["scale"])
+        add_child(boulder)
+        _add_boulder_convex_collisions(boulder)
+
+
+func _add_boulder_convex_collisions(node: Node) -> void:
+    if node is MeshInstance3D:
+        var mesh_instance := node as MeshInstance3D
+        if mesh_instance.mesh != null:
+            mesh_instance.create_convex_collision(true, true)
+    for child in node.get_children():
+        if child is not StaticBody3D:
+            _add_boulder_convex_collisions(child)
 
 
 func _build_industrial_structures() -> void:
