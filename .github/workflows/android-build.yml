@@ -3,7 +3,7 @@ name: Android Debug APK
 on:
   workflow_dispatch:
   push:
-    branches: [ main, cloud-fixes-review ]
+    branches: [ main, cloud-fixes-review, gameplay-path-audit ]
 
 jobs:
   export:
