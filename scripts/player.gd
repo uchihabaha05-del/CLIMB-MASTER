@@ -25,6 +25,7 @@ var previous_hook_vector := Vector3.ZERO
 var hook_cooldown := 0.0
 var imported_skeleton: Skeleton3D
 var posed_bones: Array[int] = []
+var hook_feedback := "Проведи пальцем, чтобы навести молот; отпусти для зацепа."
 
 func _ready() -> void:
     var pot_loaded := _add_imported_model("res://assets/models/cauldron.glb", 1.72, "ImportedCauldron")
@@ -360,6 +361,14 @@ func _physics_process(delta: float) -> void:
     # A hook remains attached to the world point, never to the moving player.
     if anchored and global_position.distance_to(anchor_point) > HAMMER_REACH * 2.6:
         _release_hook()
+    for collision_index in range(get_slide_collision_count()):
+        var collision := get_slide_collision(collision_index)
+        var collider := collision.get_collider()
+        if collider is Node and (collider as Node).is_in_group("climb_hazard"):
+            _release_hook()
+            velocity += collision.get_normal() * 5.5 + Vector3.UP * 3.0
+            hook_feedback = "Препятствие сбило тебя! Ищи безопасный момент."
+            break
 
 func _apply_hook_physics(delta: float, horizontal: float) -> void:
     var offset := anchor_point - global_position
@@ -388,30 +397,60 @@ func _try_hook() -> void:
         return
     _update_hammer_pose()
     var origin := hammer_head.global_position
-    var direction := (hammer_pivot.global_transform.basis * Vector3(0, 1, 0)).normalized()
-    var query := PhysicsRayQueryParameters3D.create(origin, origin + direction * HAMMER_REACH)
-    query.exclude = [get_rid()]
-    query.collide_with_areas = false
+    var direction := (hammer_pivot.global_transform.basis * Vector3.UP).normalized()
     var space := get_world_3d().direct_space_state
     var hit: Dictionary = {}
-    # A small fan of parallel rays makes the hammer forgiving on a phone screen.
-    var side := direction.cross(Vector3.FORWARD).normalized()
-    if side.length() < 0.1:
-        side = Vector3.RIGHT
-    for offset in [Vector3.ZERO, side * 0.14, -side * 0.14, Vector3.UP * 0.14, Vector3.DOWN * 0.14]:
-        query.from = origin + offset
-        query.to = origin + offset + direction * HAMMER_REACH
-        hit = space.intersect_ray(query)
-        if not hit.is_empty():
-            break
+
+    # Sweep a small sphere along the hammer path for forgiving mobile controls.
+    var probe := SphereShape3D.new()
+    probe.radius = 0.24
+    var shape_query := PhysicsShapeQueryParameters3D.new()
+    shape_query.shape = probe
+    shape_query.exclude = [get_rid()]
+    shape_query.collide_with_bodies = true
+    shape_query.collide_with_areas = false
+    var step_distance := 0.16
+    var distance := step_distance
+    while distance <= HAMMER_REACH:
+        shape_query.transform = Transform3D(Basis.IDENTITY, origin + direction * distance)
+        var overlaps := space.intersect_shape(shape_query, 8)
+        if not overlaps.is_empty():
+            hit = space.get_rest_info(shape_query)
+            if hit.is_empty():
+                var candidate: Dictionary = overlaps[0]
+                if candidate.has("collider") and candidate["collider"] is CollisionObject3D:
+                    hit = {"collider": candidate["collider"], "position": origin + direction * distance}
+            if not hit.is_empty():
+                break
+        distance += step_distance
+
+    # A wider ray fan also catches narrow ledges and platform edges.
+    if hit.is_empty():
+        var side := direction.cross(Vector3.FORWARD).normalized()
+        if side.length() < 0.1:
+            side = Vector3.RIGHT
+        var query := PhysicsRayQueryParameters3D.create(origin, origin + direction * HAMMER_REACH)
+        query.exclude = [get_rid()]
+        query.collide_with_areas = false
+        for offset in [Vector3.ZERO, side * 0.18, -side * 0.18, Vector3.UP * 0.18, Vector3.DOWN * 0.18, side * 0.32, -side * 0.32]:
+            query.from = origin + offset
+            query.to = origin + offset + direction * HAMMER_REACH
+            hit = space.intersect_ray(query)
+            if not hit.is_empty():
+                break
+
     if not hit.is_empty():
-        anchor_point = hit.position
-        rope_length = maxf(1.05, global_position.distance_to(anchor_point))
+        anchor_point = hit.get("position", origin + direction * minf(distance, HAMMER_REACH))
+        var actual_distance := global_position.distance_to(anchor_point)
+        rope_length = maxf(1.0, actual_distance - 0.65)
         anchored = true
-        hook_cooldown = 0.18
+        hook_cooldown = 0.22
+        hook_feedback = "Зацеп! Нажми один раз, чтобы отцепиться."
     else:
         anchored = false
+        hook_feedback = "Не попал. Подведи молот ближе к камню или платформе."
 
 func _release_hook() -> void:
     anchored = false
     hook_cooldown = 0.12
+    hook_feedback = "Отцепился. Наведи молот и отпусти палец для нового зацепа."
