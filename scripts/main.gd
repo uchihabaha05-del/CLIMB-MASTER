@@ -73,13 +73,13 @@ func _build_world() -> void:
     add_child(fill)
 
     _add_platform(Vector3(0, -0.7, 0), Vector3(5.2, 1.2, 9), Color(0.25, 0.29, 0.32))
-    _add_platform(Vector3(0.0, 2.2, 0.0), Vector3(3.2, 0.6, 2.6), Color(0.35, 0.31, 0.26))
-    _add_platform(Vector3(0.0, 5.0, 0.0), Vector3(2.8, 0.55, 2.4), Color(0.32, 0.36, 0.39))
-    _add_platform(Vector3(0.0, 7.8, 0.0), Vector3(2.6, 0.55, 2.3), Color(0.42, 0.34, 0.27))
-    _add_platform(Vector3(0.0, 10.7, 0.0), Vector3(2.8, 0.55, 2.3), Color(0.32, 0.38, 0.34))
-    _add_platform(Vector3(0.0, 13.7, 0.0), Vector3(3.0, 0.55, 2.4), Color(0.39, 0.34, 0.31))
-    _add_platform(Vector3(0.0, 16.8, 0.0), Vector3(3.0, 0.55, 2.4), Color(0.31, 0.36, 0.42))
-    _add_platform(Vector3(0.0, 20.0, 0.0), Vector3(3.5, 0.65, 3.0), Color(0.43, 0.36, 0.29))
+    _add_platform(Vector3(-1.45, 2.2, 0.0), Vector3(2.8, 0.6, 2.6), Color(0.35, 0.31, 0.26))
+    _add_platform(Vector3(1.45, 5.0, 0.0), Vector3(2.8, 0.55, 2.4), Color(0.32, 0.36, 0.39))
+    _add_platform(Vector3(-1.45, 7.8, 0.0), Vector3(2.6, 0.55, 2.3), Color(0.42, 0.34, 0.27))
+    _add_platform(Vector3(1.45, 10.7, 0.0), Vector3(2.8, 0.55, 2.3), Color(0.32, 0.38, 0.34))
+    _add_platform(Vector3(-1.45, 13.7, 0.0), Vector3(3.0, 0.55, 2.4), Color(0.39, 0.34, 0.31))
+    _add_platform(Vector3(1.45, 16.8, 0.0), Vector3(3.0, 0.55, 2.4), Color(0.31, 0.36, 0.42))
+    _add_platform(Vector3(-1.45, 20.0, 0.0), Vector3(3.5, 0.65, 3.0), Color(0.43, 0.36, 0.29))
 
     # Climbable rock pillars now have matching physics colliders.
     for i in range(12):
@@ -155,7 +155,7 @@ func _build_world() -> void:
             bolt.material_override = steel
             rock_body.add_child(bolt)
 
-        rock_body.position = Vector3(randf_range(-0.9, 0.9), randf_range(1.0, 19.0), randf_range(-3.2, -1.8))
+        rock_body.position = Vector3(randf_range(-2.2, 2.2), randf_range(1.0, 19.0), randf_range(-3.2, -1.8))
         rock_body.rotation.z = randf_range(-0.2, 0.2)
         add_child(rock_body)
 
@@ -168,12 +168,12 @@ func _build_photogrammetry_boulders() -> void:
         return
 
     var placements: Array[Dictionary] = [
-        {"position": Vector3(-0.65, 1.25, -1.35), "rotation": Vector3(0.12, 0.35, -0.18), "scale": 2.65},
-        {"position": Vector3(0.65, 4.25, -1.55), "rotation": Vector3(-0.16, 1.15, 0.22), "scale": 2.85},
-        {"position": Vector3(-0.55, 7.25, -1.45), "rotation": Vector3(0.08, 2.1, -0.12), "scale": 2.7},
-        {"position": Vector3(0.60, 10.15, -1.5), "rotation": Vector3(-0.1, 0.55, 0.16), "scale": 2.9},
-        {"position": Vector3(-0.6, 13.25, -1.4), "rotation": Vector3(0.14, 1.65, -0.2), "scale": 2.75},
-        {"position": Vector3(0.55, 16.35, -1.5), "rotation": Vector3(-0.12, 2.55, 0.14), "scale": 2.85}
+        {"position": Vector3(-1.45, 1.25, -1.35), "rotation": Vector3(0.12, 0.35, -0.18), "scale": 2.65},
+        {"position": Vector3(1.45, 4.25, -1.55), "rotation": Vector3(-0.16, 1.15, 0.22), "scale": 2.85},
+        {"position": Vector3(-1.4, 7.25, -1.45), "rotation": Vector3(0.08, 2.1, -0.12), "scale": 2.7},
+        {"position": Vector3(1.4, 10.15, -1.5), "rotation": Vector3(-0.1, 0.55, 0.16), "scale": 2.9},
+        {"position": Vector3(-1.45, 13.25, -1.4), "rotation": Vector3(0.14, 1.65, -0.2), "scale": 2.75},
+        {"position": Vector3(1.45, 16.35, -1.5), "rotation": Vector3(-0.12, 2.55, 0.14), "scale": 2.85}
     ]
 
     for placement in placements:
@@ -221,12 +221,12 @@ func _build_imported_obstacles() -> void:
 
     # Stagger the imported pieces along the route so they form a deliberate climbing line.
     var placements: Array[Dictionary] = [
-        {"source": source_rock, "position": Vector3(-0.45, 3.15, 0.1), "rotation": -0.18, "scale": 1.35, "name": "TexturedRock_A"},
-        {"source": source_pipe, "position": Vector3(0.35, 6.15, 0.15), "rotation": 0.10, "scale": 1.0, "name": "RustPipe_A"},
-        {"source": source_ledge, "position": Vector3(-0.35, 8.95, 0.0), "rotation": -0.12, "scale": 1.15, "name": "StoneLedge_A"},
-        {"source": source_rock, "position": Vector3(0.45, 12.0, 0.1), "rotation": 0.22, "scale": 1.28, "name": "TexturedRock_B"},
-        {"source": source_pipe, "position": Vector3(-0.35, 15.0, 0.15), "rotation": -0.14, "scale": 1.05, "name": "RustPipe_B"},
-        {"source": source_ledge, "position": Vector3(0.35, 17.9, 0.0), "rotation": 0.15, "scale": 1.18, "name": "StoneLedge_B"}
+        {"source": source_rock, "position": Vector3(-1.35, 3.15, 0.1), "rotation": -0.18, "scale": 1.35, "name": "TexturedRock_A"},
+        {"source": source_pipe, "position": Vector3(1.35, 6.15, 0.15), "rotation": 0.10, "scale": 1.0, "name": "RustPipe_A"},
+        {"source": source_ledge, "position": Vector3(-1.35, 8.95, 0.0), "rotation": -0.12, "scale": 1.15, "name": "StoneLedge_A"},
+        {"source": source_rock, "position": Vector3(1.35, 12.0, 0.1), "rotation": 0.22, "scale": 1.28, "name": "TexturedRock_B"},
+        {"source": source_pipe, "position": Vector3(-1.35, 15.0, 0.15), "rotation": -0.14, "scale": 1.05, "name": "RustPipe_B"},
+        {"source": source_ledge, "position": Vector3(1.35, 17.9, 0.0), "rotation": 0.15, "scale": 1.18, "name": "StoneLedge_B"}
     ]
 
     for item in placements:
@@ -310,8 +310,8 @@ func _add_steel_beam(parent: Node3D, start: Vector3, finish: Vector3, width: flo
 func _build_checkpoints() -> void:
     # Checkpoints sit safely above the third and fifth ledges.
     checkpoint_positions = [
-        Vector3(0.0, 8.75, 0.0),
-        Vector3(0.0, 14.45, 0.0)
+        Vector3(-1.35, 8.75, 0.0),
+        Vector3(-1.35, 14.45, 0.0)
     ]
     for i in range(checkpoint_positions.size()):
         var marker := Node3D.new()
@@ -374,14 +374,14 @@ func _build_obstacles() -> void:
 
         var beam := MeshInstance3D.new()
         var beam_mesh := BoxMesh.new()
-        beam_mesh.size = Vector3(3.7, 0.24, 0.48)
+        beam_mesh.size = Vector3(4.8, 0.24, 0.48)
         beam.mesh = beam_mesh
         beam.material_override = hazard_material
         obstacle.add_child(beam)
 
         var beam_collision := CollisionShape3D.new()
         var beam_shape := BoxShape3D.new()
-        beam_shape.size = Vector3(3.7, 0.28, 0.55)
+        beam_shape.size = Vector3(4.8, 0.28, 0.55)
         beam_collision.shape = beam_shape
         obstacle.add_child(beam_collision)
 
@@ -391,7 +391,7 @@ func _build_obstacles() -> void:
             cap_mesh.radius = 0.19
             cap_mesh.height = 0.38
             warning_cap.mesh = cap_mesh
-            warning_cap.position.x = side * 1.78
+            warning_cap.position.x = side * 2.33
             warning_cap.material_override = warning_material
             obstacle.add_child(warning_cap)
 
@@ -428,7 +428,7 @@ func _build_camera() -> void:
     camera = Camera3D.new()
     camera.position = Vector3(0, 2.0, 18.0)
     camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-    camera.size = 8.8
+    camera.size = 10.2
     camera.current = true
     add_child(camera)
 
