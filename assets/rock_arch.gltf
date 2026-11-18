@@ -1,0 +1,145 @@
+{
+ "asset": {
+  "version": "2.0",
+  "generator": "procedural obstacle generator"
+ },
+ "scene": 0,
+ "scenes": [
+  {
+   "nodes": [
+    0
+   ]
+  }
+ ],
+ "nodes": [
+  {
+   "mesh": 0,
+   "name": "rock_arch"
+  }
+ ],
+ "meshes": [
+  {
+   "name": "rock_arch",
+   "primitives": [
+    {
+     "attributes": {
+      "POSITION": 0,
+      "NORMAL": 1,
+      "TEXCOORD_0": 2
+     },
+     "indices": 3,
+     "material": 0
+    }
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "rock",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 0
+    },
+    "metallicFactor": 0.0,
+    "roughnessFactor": 0.95
+   },
+   "normalTexture": {
+    "index": 1
+   }
+  }
+ ],
+ "textures": [
+  {
+   "source": 0,
+   "sampler": 0
+  },
+  {
+   "source": 1,
+   "sampler": 0
+  }
+ ],
+ "images": [
+  {
+   "uri": "textures/rock.jpg"
+  },
+  {
+   "uri": "textures/rock_normal.png"
+  }
+ ],
+ "samplers": [
+  {
+   "magFilter": 9729,
+   "minFilter": 9987,
+   "wrapS": 10497,
+   "wrapT": 10497
+  }
+ ],
+ "buffers": [
+  {
+   "uri": "rock_arch.bin",
+   "byteLength": 492688
+  }
+ ],
+ "bufferViews": [
+  {
+   "buffer": 0,
+   "byteOffset": 0,
+   "byteLength": 107304,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 107304,
+   "byteLength": 107304,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 214608,
+   "byteLength": 71536,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 286144,
+   "byteLength": 206544,
+   "target": 34963
+  }
+ ],
+ "accessors": [
+  {
+   "bufferView": 0,
+   "componentType": 5126,
+   "count": 8942,
+   "type": "VEC3",
+   "min": [
+    -2.528707504272461,
+    0.0,
+    -0.7567495703697205
+   ],
+   "max": [
+    2.528707504272461,
+    2.785046100616455,
+    0.7567495703697205
+   ]
+  },
+  {
+   "bufferView": 1,
+   "componentType": 5126,
+   "count": 8942,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 2,
+   "componentType": 5126,
+   "count": 8942,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 3,
+   "componentType": 5125,
+   "count": 51636,
+   "type": "SCALAR"
+  }
+ ]
+}

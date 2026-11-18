@@ -1,0 +1,145 @@
+{
+ "asset": {
+  "version": "2.0",
+  "generator": "procedural obstacle generator"
+ },
+ "scene": 0,
+ "scenes": [
+  {
+   "nodes": [
+    0
+   ]
+  }
+ ],
+ "nodes": [
+  {
+   "mesh": 0,
+   "name": "stalagmite_field"
+  }
+ ],
+ "meshes": [
+  {
+   "name": "stalagmite_field",
+   "primitives": [
+    {
+     "attributes": {
+      "POSITION": 0,
+      "NORMAL": 1,
+      "TEXCOORD_0": 2
+     },
+     "indices": 3,
+     "material": 0
+    }
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "rock",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 0
+    },
+    "metallicFactor": 0.0,
+    "roughnessFactor": 0.95
+   },
+   "normalTexture": {
+    "index": 1
+   }
+  }
+ ],
+ "textures": [
+  {
+   "source": 0,
+   "sampler": 0
+  },
+  {
+   "source": 1,
+   "sampler": 0
+  }
+ ],
+ "images": [
+  {
+   "uri": "textures/rock.jpg"
+  },
+  {
+   "uri": "textures/rock_normal.png"
+  }
+ ],
+ "samplers": [
+  {
+   "magFilter": 9729,
+   "minFilter": 9987,
+   "wrapS": 10497,
+   "wrapT": 10497
+  }
+ ],
+ "buffers": [
+  {
+   "uri": "stalagmite_field.bin",
+   "byteLength": 505304
+  }
+ ],
+ "bufferViews": [
+  {
+   "buffer": 0,
+   "byteOffset": 0,
+   "byteLength": 111072,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 111072,
+   "byteLength": 111072,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 222144,
+   "byteLength": 74048,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 296192,
+   "byteLength": 209112,
+   "target": 34963
+  }
+ ],
+ "accessors": [
+  {
+   "bufferView": 0,
+   "componentType": 5126,
+   "count": 9256,
+   "type": "VEC3",
+   "min": [
+    -2.1091127395629883,
+    0.0,
+    -1.5094813108444214
+   ],
+   "max": [
+    2.1091127395629883,
+    2.2341456413269043,
+    1.5094813108444214
+   ]
+  },
+  {
+   "bufferView": 1,
+   "componentType": 5126,
+   "count": 9256,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 2,
+   "componentType": 5126,
+   "count": 9256,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 3,
+   "componentType": 5125,
+   "count": 52278,
+   "type": "SCALAR"
+  }
+ ]
+}

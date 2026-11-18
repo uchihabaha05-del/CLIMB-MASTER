@@ -1,0 +1,145 @@
+{
+ "asset": {
+  "version": "2.0",
+  "generator": "procedural obstacle generator"
+ },
+ "scene": 0,
+ "scenes": [
+  {
+   "nodes": [
+    0
+   ]
+  }
+ ],
+ "nodes": [
+  {
+   "mesh": 0,
+   "name": "boulder_granite"
+  }
+ ],
+ "meshes": [
+  {
+   "name": "boulder_granite",
+   "primitives": [
+    {
+     "attributes": {
+      "POSITION": 0,
+      "NORMAL": 1,
+      "TEXCOORD_0": 2
+     },
+     "indices": 3,
+     "material": 0
+    }
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "rock",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 0
+    },
+    "metallicFactor": 0.0,
+    "roughnessFactor": 0.95
+   },
+   "normalTexture": {
+    "index": 1
+   }
+  }
+ ],
+ "textures": [
+  {
+   "source": 0,
+   "sampler": 0
+  },
+  {
+   "source": 1,
+   "sampler": 0
+  }
+ ],
+ "images": [
+  {
+   "uri": "textures/rock.jpg"
+  },
+  {
+   "uri": "textures/rock_normal.png"
+  }
+ ],
+ "samplers": [
+  {
+   "magFilter": 9729,
+   "minFilter": 9987,
+   "wrapS": 10497,
+   "wrapT": 10497
+  }
+ ],
+ "buffers": [
+  {
+   "uri": "boulder_granite.bin",
+   "byteLength": 190680
+  }
+ ],
+ "bufferViews": [
+  {
+   "buffer": 0,
+   "byteOffset": 0,
+   "byteLength": 41472,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 41472,
+   "byteLength": 41472,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 82944,
+   "byteLength": 27648,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 110592,
+   "byteLength": 80088,
+   "target": 34963
+  }
+ ],
+ "accessors": [
+  {
+   "bufferView": 0,
+   "componentType": 5126,
+   "count": 3456,
+   "type": "VEC3",
+   "min": [
+    -1.341203212738037,
+    0.0,
+    -1.0219353437423706
+   ],
+   "max": [
+    1.341203212738037,
+    1.6382477283477783,
+    1.0219353437423706
+   ]
+  },
+  {
+   "bufferView": 1,
+   "componentType": 5126,
+   "count": 3456,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 2,
+   "componentType": 5126,
+   "count": 3456,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 3,
+   "componentType": 5125,
+   "count": 20022,
+   "type": "SCALAR"
+  }
+ ]
+}

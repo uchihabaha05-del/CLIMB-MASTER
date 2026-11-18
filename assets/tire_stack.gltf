@@ -1,0 +1,145 @@
+{
+ "asset": {
+  "version": "2.0",
+  "generator": "procedural obstacle generator"
+ },
+ "scene": 0,
+ "scenes": [
+  {
+   "nodes": [
+    0
+   ]
+  }
+ ],
+ "nodes": [
+  {
+   "mesh": 0,
+   "name": "tire_stack"
+  }
+ ],
+ "meshes": [
+  {
+   "name": "tire_stack",
+   "primitives": [
+    {
+     "attributes": {
+      "POSITION": 0,
+      "NORMAL": 1,
+      "TEXCOORD_0": 2
+     },
+     "indices": 3,
+     "material": 0
+    }
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "rubber",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 0
+    },
+    "metallicFactor": 0.0,
+    "roughnessFactor": 0.85
+   },
+   "normalTexture": {
+    "index": 1
+   }
+  }
+ ],
+ "textures": [
+  {
+   "source": 0,
+   "sampler": 0
+  },
+  {
+   "source": 1,
+   "sampler": 0
+  }
+ ],
+ "images": [
+  {
+   "uri": "textures/rubber.jpg"
+  },
+  {
+   "uri": "textures/rubber_normal.png"
+  }
+ ],
+ "samplers": [
+  {
+   "magFilter": 9729,
+   "minFilter": 9987,
+   "wrapS": 10497,
+   "wrapT": 10497
+  }
+ ],
+ "buffers": [
+  {
+   "uri": "tire_stack.bin",
+   "byteLength": 214440
+  }
+ ],
+ "bufferViews": [
+  {
+   "buffer": 0,
+   "byteOffset": 0,
+   "byteLength": 47520,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 47520,
+   "byteLength": 47520,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 95040,
+   "byteLength": 31680,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 126720,
+   "byteLength": 87720,
+   "target": 34963
+  }
+ ],
+ "accessors": [
+  {
+   "bufferView": 0,
+   "componentType": 5126,
+   "count": 3960,
+   "type": "VEC3",
+   "min": [
+    -0.8638617396354675,
+    0.0,
+    -0.8018051385879517
+   ],
+   "max": [
+    0.8638617396354675,
+    2.95613431930542,
+    0.8018051385879517
+   ]
+  },
+  {
+   "bufferView": 1,
+   "componentType": 5126,
+   "count": 3960,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 2,
+   "componentType": 5126,
+   "count": 3960,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 3,
+   "componentType": 5125,
+   "count": 21930,
+   "type": "SCALAR"
+  }
+ ]
+}

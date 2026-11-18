@@ -1,0 +1,145 @@
+{
+ "asset": {
+  "version": "2.0",
+  "generator": "procedural obstacle generator"
+ },
+ "scene": 0,
+ "scenes": [
+  {
+   "nodes": [
+    0
+   ]
+  }
+ ],
+ "nodes": [
+  {
+   "mesh": 0,
+   "name": "ice_spikes"
+  }
+ ],
+ "meshes": [
+  {
+   "name": "ice_spikes",
+   "primitives": [
+    {
+     "attributes": {
+      "POSITION": 0,
+      "NORMAL": 1,
+      "TEXCOORD_0": 2
+     },
+     "indices": 3,
+     "material": 0
+    }
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "ice",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 0
+    },
+    "metallicFactor": 0.0,
+    "roughnessFactor": 0.12
+   },
+   "normalTexture": {
+    "index": 1
+   }
+  }
+ ],
+ "textures": [
+  {
+   "source": 0,
+   "sampler": 0
+  },
+  {
+   "source": 1,
+   "sampler": 0
+  }
+ ],
+ "images": [
+  {
+   "uri": "textures/ice.jpg"
+  },
+  {
+   "uri": "textures/ice_normal.png"
+  }
+ ],
+ "samplers": [
+  {
+   "magFilter": 9729,
+   "minFilter": 9987,
+   "wrapS": 10497,
+   "wrapT": 10497
+  }
+ ],
+ "buffers": [
+  {
+   "uri": "ice_spikes.bin",
+   "byteLength": 583960
+  }
+ ],
+ "bufferViews": [
+  {
+   "buffer": 0,
+   "byteOffset": 0,
+   "byteLength": 128472,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 128472,
+   "byteLength": 128472,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 256944,
+   "byteLength": 85648,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 342592,
+   "byteLength": 241368,
+   "target": 34963
+  }
+ ],
+ "accessors": [
+  {
+   "bufferView": 0,
+   "componentType": 5126,
+   "count": 10706,
+   "type": "VEC3",
+   "min": [
+    -1.5187300443649292,
+    0.0,
+    -1.445823311805725
+   ],
+   "max": [
+    1.5187300443649292,
+    1.8479642868041992,
+    1.445823311805725
+   ]
+  },
+  {
+   "bufferView": 1,
+   "componentType": 5126,
+   "count": 10706,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 2,
+   "componentType": 5126,
+   "count": 10706,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 3,
+   "componentType": 5125,
+   "count": 60342,
+   "type": "SCALAR"
+  }
+ ]
+}

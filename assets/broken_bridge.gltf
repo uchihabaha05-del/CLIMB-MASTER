@@ -1,0 +1,145 @@
+{
+ "asset": {
+  "version": "2.0",
+  "generator": "procedural obstacle generator"
+ },
+ "scene": 0,
+ "scenes": [
+  {
+   "nodes": [
+    0
+   ]
+  }
+ ],
+ "nodes": [
+  {
+   "mesh": 0,
+   "name": "broken_bridge"
+  }
+ ],
+ "meshes": [
+  {
+   "name": "broken_bridge",
+   "primitives": [
+    {
+     "attributes": {
+      "POSITION": 0,
+      "NORMAL": 1,
+      "TEXCOORD_0": 2
+     },
+     "indices": 3,
+     "material": 0
+    }
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "wood",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 0
+    },
+    "metallicFactor": 0.0,
+    "roughnessFactor": 0.8
+   },
+   "normalTexture": {
+    "index": 1
+   }
+  }
+ ],
+ "textures": [
+  {
+   "source": 0,
+   "sampler": 0
+  },
+  {
+   "source": 1,
+   "sampler": 0
+  }
+ ],
+ "images": [
+  {
+   "uri": "textures/wood.jpg"
+  },
+  {
+   "uri": "textures/wood_normal.png"
+  }
+ ],
+ "samplers": [
+  {
+   "magFilter": 9729,
+   "minFilter": 9987,
+   "wrapS": 10497,
+   "wrapT": 10497
+  }
+ ],
+ "buffers": [
+  {
+   "uri": "broken_bridge.bin",
+   "byteLength": 50496
+  }
+ ],
+ "bufferViews": [
+  {
+   "buffer": 0,
+   "byteOffset": 0,
+   "byteLength": 12528,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 12528,
+   "byteLength": 12528,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 25056,
+   "byteLength": 8352,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 33408,
+   "byteLength": 17088,
+   "target": 34963
+  }
+ ],
+ "accessors": [
+  {
+   "bufferView": 0,
+   "componentType": 5126,
+   "count": 1044,
+   "type": "VEC3",
+   "min": [
+    -3.059999942779541,
+    0.0,
+    -0.5803982615470886
+   ],
+   "max": [
+    3.059999942779541,
+    1.354750156402588,
+    0.5803982615470886
+   ]
+  },
+  {
+   "bufferView": 1,
+   "componentType": 5126,
+   "count": 1044,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 2,
+   "componentType": 5126,
+   "count": 1044,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 3,
+   "componentType": 5125,
+   "count": 4272,
+   "type": "SCALAR"
+  }
+ ]
+}

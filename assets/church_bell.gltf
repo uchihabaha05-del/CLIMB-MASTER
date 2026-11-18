@@ -1,0 +1,333 @@
+{
+ "asset": {
+  "version": "2.0",
+  "generator": "procedural obstacle generator"
+ },
+ "scene": 0,
+ "scenes": [
+  {
+   "nodes": [
+    0
+   ]
+  }
+ ],
+ "nodes": [
+  {
+   "mesh": 0,
+   "name": "church_bell"
+  }
+ ],
+ "meshes": [
+  {
+   "name": "church_bell",
+   "primitives": [
+    {
+     "attributes": {
+      "POSITION": 0,
+      "NORMAL": 1,
+      "TEXCOORD_0": 2
+     },
+     "indices": 3,
+     "material": 0
+    },
+    {
+     "attributes": {
+      "POSITION": 4,
+      "NORMAL": 5,
+      "TEXCOORD_0": 6
+     },
+     "indices": 7,
+     "material": 1
+    },
+    {
+     "attributes": {
+      "POSITION": 8,
+      "NORMAL": 9,
+      "TEXCOORD_0": 10
+     },
+     "indices": 11,
+     "material": 2
+    }
+   ]
+  }
+ ],
+ "materials": [
+  {
+   "name": "patina",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 0
+    },
+    "metallicFactor": 0.5,
+    "roughnessFactor": 0.5
+   },
+   "normalTexture": {
+    "index": 1
+   }
+  },
+  {
+   "name": "rusty_metal",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 2
+    },
+    "metallicFactor": 0.65,
+    "roughnessFactor": 0.65
+   },
+   "normalTexture": {
+    "index": 3
+   }
+  },
+  {
+   "name": "wood",
+   "pbrMetallicRoughness": {
+    "baseColorTexture": {
+     "index": 4
+    },
+    "metallicFactor": 0.0,
+    "roughnessFactor": 0.8
+   },
+   "normalTexture": {
+    "index": 5
+   }
+  }
+ ],
+ "textures": [
+  {
+   "source": 0,
+   "sampler": 0
+  },
+  {
+   "source": 1,
+   "sampler": 0
+  },
+  {
+   "source": 2,
+   "sampler": 0
+  },
+  {
+   "source": 3,
+   "sampler": 0
+  },
+  {
+   "source": 4,
+   "sampler": 0
+  },
+  {
+   "source": 5,
+   "sampler": 0
+  }
+ ],
+ "images": [
+  {
+   "uri": "textures/patina.jpg"
+  },
+  {
+   "uri": "textures/patina_normal.png"
+  },
+  {
+   "uri": "textures/rusty_metal.jpg"
+  },
+  {
+   "uri": "textures/rusty_metal_normal.png"
+  },
+  {
+   "uri": "textures/wood.jpg"
+  },
+  {
+   "uri": "textures/wood_normal.png"
+  }
+ ],
+ "samplers": [
+  {
+   "magFilter": 9729,
+   "minFilter": 9987,
+   "wrapS": 10497,
+   "wrapT": 10497
+  }
+ ],
+ "buffers": [
+  {
+   "uri": "church_bell.bin",
+   "byteLength": 361800
+  }
+ ],
+ "bufferViews": [
+  {
+   "buffer": 0,
+   "byteOffset": 0,
+   "byteLength": 37044,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 37044,
+   "byteLength": 37044,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 74088,
+   "byteLength": 24696,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 98784,
+   "byteLength": 71424,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 170208,
+   "byteLength": 41472,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 211680,
+   "byteLength": 41472,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 253152,
+   "byteLength": 27648,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 280800,
+   "byteLength": 80088,
+   "target": 34963
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 360888,
+   "byteLength": 288,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 361176,
+   "byteLength": 288,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 361464,
+   "byteLength": 192,
+   "target": 34962
+  },
+  {
+   "buffer": 0,
+   "byteOffset": 361656,
+   "byteLength": 144,
+   "target": 34963
+  }
+ ],
+ "accessors": [
+  {
+   "bufferView": 0,
+   "componentType": 5126,
+   "count": 3087,
+   "type": "VEC3",
+   "min": [
+    -0.3401484787464142,
+    0.0,
+    -0.75
+   ],
+   "max": [
+    1.024123191833496,
+    1.3728891611099243,
+    0.75
+   ]
+  },
+  {
+   "bufferView": 1,
+   "componentType": 5126,
+   "count": 3087,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 2,
+   "componentType": 5126,
+   "count": 3087,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 3,
+   "componentType": 5125,
+   "count": 17856,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 4,
+   "componentType": 5126,
+   "count": 3456,
+   "type": "VEC3",
+   "min": [
+    0.2693274915218353,
+    0.4663422107696533,
+    -0.08992772549390793
+   ],
+   "max": [
+    0.44919994473457336,
+    0.6463061571121216,
+    0.08992772549390793
+   ]
+  },
+  {
+   "bufferView": 5,
+   "componentType": 5126,
+   "count": 3456,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 6,
+   "componentType": 5126,
+   "count": 3456,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 7,
+   "componentType": 5125,
+   "count": 20022,
+   "type": "SCALAR"
+  },
+  {
+   "bufferView": 8,
+   "componentType": 5126,
+   "count": 24,
+   "type": "VEC3",
+   "min": [
+    -1.024123191833496,
+    0.7468822598457336,
+    -0.10000000149011612
+   ],
+   "max": [
+    0.486645370721817,
+    1.9732744693756104,
+    0.10000000149011612
+   ]
+  },
+  {
+   "bufferView": 9,
+   "componentType": 5126,
+   "count": 24,
+   "type": "VEC3"
+  },
+  {
+   "bufferView": 10,
+   "componentType": 5126,
+   "count": 24,
+   "type": "VEC2"
+  },
+  {
+   "bufferView": 11,
+   "componentType": 5125,
+   "count": 36,
+   "type": "SCALAR"
+  }
+ ]
+}
