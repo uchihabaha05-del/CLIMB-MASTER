@@ -25,13 +25,42 @@ func _ready() -> void:
 func _build_world() -> void:
     var env := WorldEnvironment.new()
     var environment := Environment.new()
-    environment.background_mode = Environment.BG_COLOR
-    environment.background_color = Color(0.055, 0.075, 0.105)
+    environment.background_mode = Environment.BG_SKY
+
+    var sky := Sky.new()
+    var sky_material := ProceduralSkyMaterial.new()
+    sky_material.sky_top_color = Color(0.055, 0.12, 0.22)
+    sky_material.sky_horizon_color = Color(0.48, 0.58, 0.68)
+    sky_material.ground_bottom_color = Color(0.055, 0.065, 0.075)
+    sky_material.ground_horizon_color = Color(0.26, 0.30, 0.34)
+    sky_material.sun_angle_max = 18.0
+    sky.sky_material = sky_material
+    environment.sky = sky
     environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-    environment.ambient_light_color = Color(0.65, 0.72, 0.85)
-    environment.ambient_light_energy = 0.8
+    environment.ambient_light_color = Color(0.62, 0.70, 0.82)
+    environment.ambient_light_energy = 0.72
+    environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+    environment.fog_enabled = true
+    environment.fog_light_color = Color(0.42, 0.52, 0.62)
+    environment.fog_density = 0.012
     env.environment = environment
     add_child(env)
+
+    var sun := DirectionalLight3D.new()
+    sun.name = "MountainSun"
+    sun.rotation_degrees = Vector3(-48.0, -32.0, 0.0)
+    sun.light_color = Color(1.0, 0.86, 0.69)
+    sun.light_energy = 1.35
+    sun.shadow_enabled = true
+    sun.directional_shadow_max_distance = 55.0
+    add_child(sun)
+
+    var fill := DirectionalLight3D.new()
+    fill.name = "ColdSkyFill"
+    fill.rotation_degrees = Vector3(-22.0, 145.0, 0.0)
+    fill.light_color = Color(0.42, 0.62, 0.9)
+    fill.light_energy = 0.38
+    add_child(fill)
 
     _add_platform(Vector3(0, -0.7, 0), Vector3(9, 1.2, 9), Color(0.25, 0.29, 0.32))
     _add_platform(Vector3(2.5, 2.2, 0.0), Vector3(3.2, 0.6, 2.6), Color(0.35, 0.31, 0.26))
