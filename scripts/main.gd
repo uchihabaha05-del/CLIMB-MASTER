@@ -826,7 +826,7 @@ func _build_start_flow() -> void:
     bg.color = Color(0.025, 0.045, 0.07, 1.0)
     start_overlay.add_child(bg)
     var splash_art := TextureRect.new()
-    splash_art.texture = load("res://assets/summit_forge_splash.svg") as Texture2D
+    splash_art.texture = load("res://assets/start_screen.jpg") as Texture2D
     splash_art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     splash_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
     splash_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
