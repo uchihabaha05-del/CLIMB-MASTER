@@ -54,7 +54,14 @@ jobs:
         run: godot --headless --editor --path . --quit
 
       - name: Smoke test the playable scene
-        run: godot --headless --path . --quit-after 120
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . --quit-after 120 2>&1 | tee /tmp/climb-master-smoke.log
+          if grep -E "SCRIPT ERROR:|Parse Error:|ERROR: Failed to load script|ERROR: Cannot open" /tmp/climb-master-smoke.log; then
+            echo "Godot smoke test found a scene, script or resource loading error."
+            exit 1
+          fi
 
       - name: Diagnose Android export configuration
         shell: bash
