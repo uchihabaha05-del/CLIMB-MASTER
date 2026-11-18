@@ -8,7 +8,20 @@ var hud_title_label: Label
 var status_label: Label
 var restart_button: Button
 var pause_button: Button
-const TOP_HEIGHT := 20.0
+const ROUTE_LEDGE_POSITIONS := [
+    Vector2(-1.35, 2.0),
+    Vector2(1.35, 4.35),
+    Vector2(-1.35, 6.70),
+    Vector2(1.35, 9.05),
+    Vector2(-1.35, 11.40),
+    Vector2(1.35, 13.75),
+    Vector2(-1.35, 16.10),
+    Vector2(1.35, 18.45),
+    Vector2(-1.35, 20.80),
+    Vector2(1.35, 23.15)
+]
+const LEDGE_SIZE := Vector3(2.75, 0.56, 2.35)
+const TOP_HEIGHT := 22.75
 const SAVE_PATH := "user://climb_master.cfg"
 var start_y := 0.0
 var best_height := 0.0
@@ -28,6 +41,7 @@ var coin_count := 0
 var collectible_nodes: Array[Node3D] = []
 var pause_overlay: Control
 var moving_obstacles: Array[AnimatableBody3D] = []
+var obstacle_phases: Array[float] = []
 var obstacle_clock := 0.0
 var last_player_feedback := ""
 var lang := "ru"
@@ -117,19 +131,23 @@ func _build_world() -> void:
     fill.light_energy = 0.38
     add_child(fill)
 
-    _add_platform(Vector3(0, -0.7, 0), Vector3(5.2, 1.2, 9), Color(0.25, 0.29, 0.32))
-    _add_platform(Vector3(-1.42, 2.2, 0.0), Vector3(2.65, 0.58, 2.55), Color(0.35, 0.31, 0.26), -0.035)
-    _add_platform(Vector3(1.38, 5.0, 0.0), Vector3(2.55, 0.52, 2.25), Color(0.32, 0.36, 0.39), 0.045)
-    _add_platform(Vector3(-1.50, 7.8, 0.0), Vector3(2.45, 0.54, 2.15), Color(0.42, 0.34, 0.27), -0.06)
-    _add_platform(Vector3(1.38, 10.7, 0.0), Vector3(2.7, 0.50, 2.2), Color(0.32, 0.38, 0.34), 0.025)
-    _add_platform(Vector3(-1.40, 13.7, 0.0), Vector3(2.8, 0.56, 2.3), Color(0.39, 0.34, 0.31), 0.055)
-    _add_platform(Vector3(1.50, 16.8, 0.0), Vector3(2.75, 0.52, 2.25), Color(0.31, 0.36, 0.42), -0.04)
-    _add_platform(Vector3(-1.45, 20.0, 0.0), Vector3(3.35, 0.62, 2.8), Color(0.43, 0.36, 0.29), 0.02)
+    _add_platform(Vector3(0.0, -0.7, 0.0), Vector3(5.2, 1.2, 9.0), Color(0.25, 0.29, 0.32))
+    # One authored route drives every ledge, checkpoint, pickup and the summit.
+    # The 2.35 m vertical rhythm keeps each next foothold within the scythe's reach.
+    var ledge_colors := [
+        Color(0.35, 0.31, 0.26), Color(0.32, 0.36, 0.39),
+        Color(0.42, 0.34, 0.27), Color(0.32, 0.38, 0.34),
+        Color(0.39, 0.34, 0.31), Color(0.31, 0.36, 0.42)
+    ]
+    for i in range(ROUTE_LEDGE_POSITIONS.size()):
+        var point: Vector2 = ROUTE_LEDGE_POSITIONS[i]
+        var tilt := -0.035 if i % 2 == 0 else 0.035
+        _add_platform(Vector3(point.x, point.y, 0.0), LEDGE_SIZE, ledge_colors[i % ledge_colors.size()], tilt)
 
     # Keep the central climbing lane readable. Natural cliff outcrops frame
     # the route from the far left and right instead of spawning in front of it.
     for side in [-1.0, 1.0]:
-        for level in range(6):
+        for level in range(8):
             var outcrop := StaticBody3D.new()
             outcrop.name = "CliffOutcrop_%s_%d" % ["L" if side < 0.0 else "R", level]
             var rock := MeshInstance3D.new()
@@ -149,7 +167,7 @@ func _build_world() -> void:
             collision.shape = shape
             collision.scale = Vector3(1.1, 1.3, 0.85)
             outcrop.add_child(collision)
-            outcrop.position = Vector3(side * 4.65, 1.5 + float(level) * 3.35, -0.25)
+            outcrop.position = Vector3(side * 5.0, 1.5 + float(level) * 3.15, -0.25)
             add_child(outcrop)
 
 
@@ -164,12 +182,13 @@ func _build_photogrammetry_boulders() -> void:
     # Scanned boulders sit just outside alternating footholds. Their edges are
     # reachable with the scythe, while the middle of the route stays readable.
     var placements: Array[Dictionary] = [
-        {"position": Vector3(-3.15, 2.55, -0.22), "rotation": Vector3(0.12, 0.35, -0.18), "scale": 2.25},
-        {"position": Vector3(3.15, 5.45, -0.22), "rotation": Vector3(-0.16, 1.15, 0.22), "scale": 2.30},
-        {"position": Vector3(-3.15, 8.45, -0.22), "rotation": Vector3(0.08, 2.1, -0.12), "scale": 2.28},
-        {"position": Vector3(3.15, 11.45, -0.22), "rotation": Vector3(-0.1, 0.55, 0.16), "scale": 2.32},
-        {"position": Vector3(-3.15, 14.45, -0.22), "rotation": Vector3(0.14, 1.65, -0.2), "scale": 2.28},
-        {"position": Vector3(3.15, 17.45, -0.22), "rotation": Vector3(-0.12, 2.55, 0.14), "scale": 2.30}
+        {"position": Vector3(-3.85, 2.65, -0.22), "rotation": Vector3(0.12, 0.35, -0.18), "scale": 1.85},
+        {"position": Vector3(3.85, 6.10, -0.22), "rotation": Vector3(-0.16, 1.15, 0.22), "scale": 1.88},
+        {"position": Vector3(-3.85, 9.55, -0.22), "rotation": Vector3(0.08, 2.1, -0.12), "scale": 1.85},
+        {"position": Vector3(3.85, 13.00, -0.22), "rotation": Vector3(-0.1, 0.55, 0.16), "scale": 1.88},
+        {"position": Vector3(-3.85, 16.45, -0.22), "rotation": Vector3(0.14, 1.65, -0.2), "scale": 1.85},
+        {"position": Vector3(3.85, 19.90, -0.22), "rotation": Vector3(-0.12, 2.55, 0.14), "scale": 1.88},
+        {"position": Vector3(-3.85, 22.80, -0.22), "rotation": Vector3(0.10, 0.85, -0.15), "scale": 1.82}
     ]
 
     for placement in placements:
@@ -322,7 +341,7 @@ func _build_industrial_structures() -> void:
     rust.roughness = 0.78
 
     for side in [-1.0, 1.0]:
-        for level in range(3):
+        for level in range(4):
             var frame := Node3D.new()
             frame.position = Vector3(side * 4.8, 2.0 + float(level) * 6.0, -0.2)
             add_child(frame)
@@ -352,11 +371,11 @@ func _add_steel_beam(parent: Node3D, start: Vector3, finish: Vector3, width: flo
     parent.add_child(beam)
 
 func _build_checkpoints() -> void:
-    # Checkpoints sit safely above the third and fifth ledges.
-    checkpoint_positions = [
-        Vector3(-1.35, 8.75, 0.0),
-        Vector3(-1.35, 14.45, 0.0)
-    ]
+    # Respawn points are centered over the third, sixth and ninth safe ledges.
+    checkpoint_positions.clear()
+    for route_index in [2, 5, 8]:
+        var ledge: Vector2 = ROUTE_LEDGE_POSITIONS[route_index]
+        checkpoint_positions.append(Vector3(ledge.x, ledge.y + 0.58, 0.0))
     for i in range(checkpoint_positions.size()):
         var marker := Node3D.new()
         marker.position = checkpoint_positions[i]
@@ -395,7 +414,8 @@ func _build_checkpoints() -> void:
     _build_finish_marker()
 
 func _build_finish_marker() -> void:
-    finish_position = Vector3(-1.45, 21.0, 0.0)
+    var summit: Vector2 = ROUTE_LEDGE_POSITIONS[ROUTE_LEDGE_POSITIONS.size() - 1]
+    finish_position = Vector3(summit.x, summit.y + 0.58, 0.0)
     var marker := Node3D.new()
     marker.name = "SummitMarker"
     marker.position = finish_position
@@ -433,9 +453,11 @@ func _build_obstacles() -> void:
 
     # Pendulums guard the gaps between safe ledges, never the landing zones.
     var hazard_data := [
-        {"x": 0.0, "y": 3.65, "phase": 0.0},
-        {"x": 0.0, "y": 9.55, "phase": 1.8},
-        {"x": 0.0, "y": 15.55, "phase": 3.2}
+        {"x": 0.0, "y": 3.20, "phase": 0.0},
+        {"x": 0.0, "y": 7.90, "phase": 1.4},
+        {"x": 0.0, "y": 12.60, "phase": 2.8},
+        {"x": 0.0, "y": 17.30, "phase": 4.2},
+        {"x": 0.0, "y": 22.00, "phase": 5.4}
     ]
     for i in range(hazard_data.size()):
         var data: Dictionary = hazard_data[i]
@@ -474,19 +496,17 @@ func _build_obstacles() -> void:
         pivot.add_child(collision)
 
         moving_obstacles.append(obstacle)
+        obstacle_phases.append(float(data["phase"]))
         add_child(obstacle)
 
 
 func _build_collectibles() -> void:
     # Optional skill pickups sit beside the main footholds, not in the required path.
-    var pickup_positions := [
-        Vector3(2.65, 3.05, 0.0),
-        Vector3(-2.65, 6.0, 0.0),
-        Vector3(2.65, 9.0, 0.0),
-        Vector3(-2.65, 12.0, 0.0),
-        Vector3(2.65, 15.0, 0.0),
-        Vector3(-2.65, 18.0, 0.0)
-    ]
+    var pickup_positions: Array[Vector3] = []
+    for i in range(ROUTE_LEDGE_POSITIONS.size()):
+        var ledge: Vector2 = ROUTE_LEDGE_POSITIONS[i]
+        # Tokens sit on the inside of the zig-zag, visible but not required to land on.
+        pickup_positions.append(Vector3(-ledge.x * 0.55, ledge.y + 0.82, 0.0))
     for i in range(pickup_positions.size()):
         var pickup := Area3D.new()
         pickup.name = "SummitToken_%02d" % i
@@ -1047,7 +1067,8 @@ func _physics_process(delta: float) -> void:
     for i in range(moving_obstacles.size()):
         var obstacle := moving_obstacles[i]
         if is_instance_valid(obstacle):
-            obstacle.rotation.z = sin(obstacle_clock * (0.82 + float(i) * 0.13) + float(i) * 1.7) * 0.48
+            var phase := obstacle_phases[i] if i < obstacle_phases.size() else float(i) * 1.7
+            obstacle.rotation.z = sin(obstacle_clock * (0.82 + float(i) * 0.13) + phase) * 0.48
     for i in range(collectible_nodes.size()):
         var pickup := collectible_nodes[i]
         if is_instance_valid(pickup):
