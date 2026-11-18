@@ -805,7 +805,7 @@ func _build_start_flow() -> void:
     peak.mouse_filter = Control.MOUSE_FILTER_IGNORE
     intro_overlay.add_child(peak)
     var brand := Label.new()
-    brand.text = ""
+    brand.text = "SUMMIT FORGE"
     brand.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     brand.set_anchors_preset(Control.PRESET_CENTER)
     brand.position = Vector2(-300, 20)
