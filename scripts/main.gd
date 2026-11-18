@@ -794,17 +794,17 @@ func _build_start_flow() -> void:
     dark.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     dark.color = Color(0.012, 0.018, 0.03, 1.0)
     intro_overlay.add_child(dark)
-    var peak := Label.new()
-    peak.text = "▲"
-    peak.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    var peak := TextureRect.new()
+    peak.texture = load("res://assets/summit_forge_logo.svg") as Texture2D
     peak.set_anchors_preset(Control.PRESET_CENTER)
-    peak.position = Vector2(-100, -150)
-    peak.size = Vector2(200, 160)
-    peak.add_theme_font_size_override("font_size", 120)
-    peak.add_theme_color_override("font_color", Color(1.0, 0.68, 0.18))
+    peak.position = Vector2(-250, -205)
+    peak.size = Vector2(500, 410)
+    peak.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+    peak.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT
+    peak.mouse_filter = Control.MOUSE_FILTER_IGNORE
     intro_overlay.add_child(peak)
     var brand := Label.new()
-    brand.text = "SUMMIT FORGE"
+    brand.text = ""
     brand.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     brand.set_anchors_preset(Control.PRESET_CENTER)
     brand.position = Vector2(-300, 20)
