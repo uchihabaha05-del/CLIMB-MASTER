@@ -4,6 +4,7 @@ const PLAYER_SCRIPT = preload("res://scripts/player.gd")
 var player: CharacterBody3D
 var camera: Camera3D
 var height_label: Label
+var hud_title_label: Label
 var status_label: Label
 var restart_button: Button
 var pause_button: Button
