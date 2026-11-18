@@ -12,12 +12,16 @@ var game_over := false
 var checkpoint_positions: Array[Vector3] = []
 var active_checkpoint := 0
 var checkpoint_label: Label
+var moving_obstacles: Array[AnimatableBody3D] = []
+var obstacle_clock := 0.0
+var last_player_feedback := ""
 
 func _ready() -> void:
     _build_world()
     _build_photogrammetry_boulders()
     _build_industrial_structures()
     _build_checkpoints()
+    _build_obstacles()
     _build_player()
     _build_camera()
     _build_hud()
@@ -270,6 +274,57 @@ func _build_checkpoints() -> void:
         beacon.material_override = beacon_mat
         marker.add_child(beacon)
 
+func _build_obstacles() -> void:
+    # Rotating quarry beams create timing-based hazards across the ascent.
+    var hazard_material := StandardMaterial3D.new()
+    hazard_material.albedo_color = Color(0.28, 0.095, 0.055)
+    hazard_material.metallic = 0.72
+    hazard_material.roughness = 0.36
+    hazard_material.emission_enabled = true
+    hazard_material.emission = Color(0.42, 0.075, 0.018)
+    hazard_material.emission_energy_multiplier = 0.45
+
+    var warning_material := StandardMaterial3D.new()
+    warning_material.albedo_color = Color(0.95, 0.34, 0.08)
+    warning_material.metallic = 0.35
+    warning_material.emission_enabled = true
+    warning_material.emission = Color(0.8, 0.12, 0.015)
+    warning_material.emission_energy_multiplier = 1.2
+
+    var obstacle_heights := [5.8, 11.8, 17.8]
+    for i in range(obstacle_heights.size()):
+        var obstacle := AnimatableBody3D.new()
+        obstacle.name = "RotatingHazard_%d" % i
+        obstacle.position = Vector3(0.0, obstacle_heights[i], 0.35)
+        obstacle.sync_to_physics = true
+        obstacle.add_to_group("climb_hazard")
+
+        var beam := MeshInstance3D.new()
+        var beam_mesh := BoxMesh.new()
+        beam_mesh.size = Vector3(3.7, 0.24, 0.48)
+        beam.mesh = beam_mesh
+        beam.material_override = hazard_material
+        obstacle.add_child(beam)
+
+        var beam_collision := CollisionShape3D.new()
+        var beam_shape := BoxShape3D.new()
+        beam_shape.size = Vector3(3.7, 0.28, 0.55)
+        beam_collision.shape = beam_shape
+        obstacle.add_child(beam_collision)
+
+        for side in [-1.0, 1.0]:
+            var warning_cap := MeshInstance3D.new()
+            var cap_mesh := SphereMesh.new()
+            cap_mesh.radius = 0.19
+            cap_mesh.height = 0.38
+            warning_cap.mesh = cap_mesh
+            warning_cap.position.x = side * 1.78
+            warning_cap.material_override = warning_material
+            obstacle.add_child(warning_cap)
+
+        moving_obstacles.append(obstacle)
+        add_child(obstacle)
+
 func _add_platform(pos: Vector3, size: Vector3, color: Color) -> void:
     var body := StaticBody3D.new()
     body.position = pos
@@ -357,10 +412,18 @@ func _build_hud() -> void:
     hud.add_child(restart_button)
 
 func _process(delta: float) -> void:
+    obstacle_clock += delta
+    for i in range(moving_obstacles.size()):
+        var obstacle := moving_obstacles[i]
+        if is_instance_valid(obstacle):
+            obstacle.rotation.z = sin(obstacle_clock * (0.82 + float(i) * 0.13) + float(i) * 1.7) * 0.78
     if not is_instance_valid(player):
         return
     var h := maxf(0.0, player.global_position.y - start_y)
     _check_checkpoint()
+    if player.hook_feedback != last_player_feedback:
+        last_player_feedback = player.hook_feedback
+        status_label.text = last_player_feedback
     peak_y = maxf(peak_y, h)
     height_label.text = "ВЫСОТА: %d м  |  РЕКОРД: %d м" % [int(h), int(peak_y)]
     # Fixed, slightly elevated chase camera: it follows the climber but does not orbit.
