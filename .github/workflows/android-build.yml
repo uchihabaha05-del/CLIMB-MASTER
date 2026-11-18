@@ -54,10 +54,6 @@ jobs:
         run: godot --headless --editor --path . --quit
 
       - name: Export Android APK
-        env:
-          GODOT_ANDROID_KEYSTORE_DEBUG_PATH: ~/.android/debug.keystore
-          GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
-          GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
         run: |
           mkdir -p build
           godot --headless --verbose --path . --export-debug "Android" build/CLIMB-MASTER-debug.apk
