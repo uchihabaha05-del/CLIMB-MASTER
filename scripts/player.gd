@@ -25,10 +25,68 @@ var previous_hook_vector := Vector3.ZERO
 var hook_cooldown := 0.0
 
 func _ready() -> void:
-    _make_pot()
+    var pot_loaded := _add_imported_model("res://assets/models/cauldron.glb", 1.72, "ImportedCauldron")
+    if not pot_loaded:
+        _make_fallback_pot()
+    var human_loaded := _add_imported_model("res://assets/models/male-base-mesh-base_male.glb", 1.58, "ImportedClimber")
+    if human_loaded:
+        var human := get_node("ImportedClimber") as Node3D
+        # Keep the lower body inside the pot; the upper torso and head remain visible.
+        human.position = Vector3(0.0, -0.12, -0.08)
+        human.rotation_degrees = Vector3(0.0, 180.0, 0.0)
+    else:
+        _make_fallback_human()
     _make_hammer()
 
-func _make_pot() -> void:
+func _add_imported_model(path: String, target_size: float, node_name: String) -> bool:
+    if not ResourceLoader.exists(path):
+        push_warning("Model not found: " + path)
+        return false
+    var packed := load(path) as PackedScene
+    if packed == null:
+        push_warning("Could not load model scene: " + path)
+        return false
+    var instance := packed.instantiate() as Node3D
+    if instance == null:
+        push_warning("Model root is not Node3D: " + path)
+        return false
+    instance.name = node_name
+    add_child(instance)
+    var bounds := _measure_model_bounds(instance, Transform3D.IDENTITY)
+    if bounds.size.length() < 0.001:
+        instance.queue_free()
+        push_warning("Model has no visible mesh bounds: " + path)
+        return false
+    var largest_horizontal := maxf(bounds.size.x, bounds.size.z)
+    var reference_size := bounds.size.y if target_size > 1.0 and bounds.size.y > largest_horizontal else largest_horizontal
+    var scale_factor := target_size / maxf(reference_size, 0.001)
+    instance.scale = Vector3.ONE * scale_factor
+    if node_name == "ImportedCauldron":
+        # Align the imported pot's bottom with the original collision body.
+        instance.position.y = -0.30 - bounds.position.y * scale_factor
+    else:
+        # The model is scaled to a human-sized height; the pot hides the legs.
+        instance.position.y = -0.12
+    return true
+
+func _measure_model_bounds(node: Node, parent_transform: Transform3D) -> AABB:
+    var current_transform := parent_transform * node.transform
+    var combined := AABB()
+    var has_bounds := false
+    if node is MeshInstance3D and node.mesh != null:
+        combined = current_transform * node.mesh.get_aabb()
+        has_bounds = true
+    for child in node.get_children():
+        var child_bounds := _measure_model_bounds(child, current_transform)
+        if child_bounds.size.length() > 0.001:
+            if has_bounds:
+                combined = combined.merge(child_bounds)
+            else:
+                combined = child_bounds
+                has_bounds = true
+    return combined
+
+func _make_fallback_pot() -> void:
     var pot := MeshInstance3D.new()
     var mesh := CylinderMesh.new()
     mesh.top_radius = 0.82
@@ -52,25 +110,32 @@ func _make_pot() -> void:
     rim.material_override = mat
     add_child(rim)
 
-    var body_shape := CollisionShape3D.new()
-    var shape := CylinderShape3D.new()
-    shape.radius = 0.72
-    shape.height = 0.9
-    body_shape.shape = shape
-    body_shape.position.y = 0.15
-    add_child(body_shape)
+    var handle_mat := StandardMaterial3D.new()
+    handle_mat.albedo_color = Color(0.28, 0.31, 0.34)
+    handle_mat.metallic = 0.88
+    handle_mat.roughness = 0.24
+    for side in [-1.0, 1.0]:
+        var handle := MeshInstance3D.new()
+        var handle_mesh := TorusMesh.new()
+        handle_mesh.inner_radius = 0.105
+        handle_mesh.outer_radius = 0.145
+        handle.mesh = handle_mesh
+        handle.position = Vector3(side * 0.82, 0.25, 0.0)
+        handle.rotation.y = PI * 0.5
+        handle.material_override = handle_mat
+        add_child(handle)
 
+func _make_fallback_human() -> void:
+    var skin := StandardMaterial3D.new()
+    skin.albedo_color = Color(0.78, 0.58, 0.43)
     var head := MeshInstance3D.new()
     var sphere := SphereMesh.new()
     sphere.radius = 0.43
     sphere.height = 0.86
     head.mesh = sphere
     head.position = Vector3(0, 0.92, 0)
-    var skin := StandardMaterial3D.new()
-    skin.albedo_color = Color(0.78, 0.58, 0.43)
     head.material_override = skin
     add_child(head)
-
     var neck := MeshInstance3D.new()
     var neck_mesh := CylinderMesh.new()
     neck_mesh.top_radius = 0.19
@@ -81,20 +146,9 @@ func _make_pot() -> void:
     neck.material_override = skin
     add_child(neck)
 
-    # Simple facial features make the climber read as a person from the camera.
     var eye_material := StandardMaterial3D.new()
     eye_material.albedo_color = Color(0.055, 0.045, 0.04)
-    eye_material.roughness = 0.42
     for side in [-1.0, 1.0]:
-        var ear := MeshInstance3D.new()
-        var ear_mesh := SphereMesh.new()
-        ear_mesh.radius = 0.105
-        ear_mesh.height = 0.21
-        ear.mesh = ear_mesh
-        ear.position = Vector3(side * 0.405, 0.91, 0.015)
-        ear.material_override = skin
-        add_child(ear)
-
         var eye := MeshInstance3D.new()
         var eye_mesh := SphereMesh.new()
         eye_mesh.radius = 0.052
@@ -103,32 +157,6 @@ func _make_pot() -> void:
         eye.position = Vector3(side * 0.145, 0.99, 0.365)
         eye.material_override = eye_material
         add_child(eye)
-
-    var nose := MeshInstance3D.new()
-    var nose_mesh := SphereMesh.new()
-    nose_mesh.radius = 0.09
-    nose_mesh.height = 0.16
-    nose.mesh = nose_mesh
-    nose.scale = Vector3(0.72, 0.72, 1.2)
-    nose.position = Vector3(0, 0.88, 0.405)
-    nose.material_override = skin
-    add_child(nose)
-
-    # Rolled metal handles on both sides of the pot.
-    for side in [-1.0, 1.0]:
-        var handle := MeshInstance3D.new()
-        var handle_mesh := TorusMesh.new()
-        handle_mesh.inner_radius = 0.105
-        handle_mesh.outer_radius = 0.145
-        handle.mesh = handle_mesh
-        handle.position = Vector3(side * 0.82, 0.25, 0.0)
-        handle.rotation.y = PI * 0.5
-        var handle_mat := StandardMaterial3D.new()
-        handle_mat.albedo_color = Color(0.28, 0.31, 0.34)
-        handle_mat.metallic = 0.88
-        handle_mat.roughness = 0.24
-        handle.material_override = handle_mat
-        add_child(handle)
 
 func _make_hammer() -> void:
     hammer_pivot = Node3D.new()
