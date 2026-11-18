@@ -353,9 +353,9 @@ func _build_player() -> void:
 
 func _build_camera() -> void:
     camera = Camera3D.new()
-    camera.position = Vector3(0, 4.8, 12.5)
-    camera.rotation_degrees = Vector3(-12, 0, 0)
-    camera.fov = 48.0
+    camera.position = Vector3(0, 2.0, 18.0)
+    camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+    camera.size = 16.5
     camera.current = true
     add_child(camera)
 
@@ -392,7 +392,7 @@ func _build_hud() -> void:
     controls.add_theme_constant_override("separation", 18)
     hud.add_child(controls)
 
-    for item in [["◀", "left"], ["▲", "up"], ["▶", "right"], ["↻", "reset"]]:
+    for item in [["◀", "left"], ["▶", "right"], ["↻", "reset"]]:
         var button := Button.new()
         button.text = item[0]
         button.custom_minimum_size = Vector2(72, 66)
@@ -427,7 +427,8 @@ func _process(delta: float) -> void:
     peak_y = maxf(peak_y, h)
     height_label.text = "ВЫСОТА: %d м  |  РЕКОРД: %d м" % [int(h), int(peak_y)]
     # Fixed, slightly elevated chase camera: it follows the climber but does not orbit.
-    var target_camera := Vector3(player.global_position.x * 0.18, player.global_position.y + 4.2, player.global_position.z + 12.5)
+    # Fixed side-on camera: no orbit, depth travel, or perspective drift.
+    var target_camera := Vector3(player.global_position.x, player.global_position.y + 2.0, 18.0)
     camera.global_position = camera.global_position.lerp(target_camera, 1.0 - exp(-4.2 * delta))
     camera.look_at(player.global_position + Vector3(0, 1.0, 0), Vector3.UP)
     if player.global_position.y < -8.0 and not game_over:
@@ -445,6 +446,7 @@ func _reset_player() -> void:
     var respawn := Vector3(0, 1.0, 0)
     if active_checkpoint > 0:
         respawn = checkpoint_positions[active_checkpoint - 1] + Vector3(0, 0.65, 0)
+    respawn.z = 0.0
     player.global_position = respawn
     player.velocity = Vector3.ZERO
     player.reset_hammer()
