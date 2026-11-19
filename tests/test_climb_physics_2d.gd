@@ -41,12 +41,8 @@ func _run() -> void:
     core.set_target_world(Vector2(3.8, 0.4))
     for i in range(300):
         await physics_frame
-    var joint_a := core.shoulder_joint.get_node_or_null(core.shoulder_joint.node_a)
-    var joint_b := core.shoulder_joint.get_node_or_null(core.shoulder_joint.node_b)
-    var joint_ok := joint_a == core.pot and joint_b == core.hammer
-    _assert(joint_ok, "Shoulder joint must resolve the pot and hammer bodies")
-    var shoulder_alignment := core.hammer.global_position.distance_to(core.shoulder_joint.global_position)
-    _assert(shoulder_alignment < 0.12, "Hammer grip must stay aligned with the shoulder pin")
+    var shoulder_alignment := core.hammer.global_position.distance_to(core.shoulder_anchor.global_position)
+    _assert(shoulder_alignment < 0.12, "Hammer grip must stay aligned with the shoulder constraint")
     var hammer_contacts := core.hammer.get_contact_count()
     var hammer_head := core.hammer.to_global(Vector2(0.88, -3.13))
     var head_before_wall := hammer_head.x <= 3.08
@@ -57,7 +53,7 @@ func _run() -> void:
         " hammer_position=", core.hammer.global_position, " hammer_head=", hammer_head,
         " hammer_rotation=", core.hammer.rotation, " contacts=", hammer_contacts,
         " COM_mode=", core.hammer.center_of_mass_mode, " COM=", core.hammer.center_of_mass,
-        " joint_a=", joint_a, " joint_b=", joint_b, " joint_anchor=", core.shoulder_joint.global_position)
+        " shoulder_anchor=", core.shoulder_anchor.global_position)
     var reaction_ok := pot_displacement > 0.025 or absf(core.pot.rotation) > 0.025
     _assert(reaction_ok, "Hammer contact must transfer motion through the shoulder joint")
 
