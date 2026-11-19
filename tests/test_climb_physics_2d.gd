@@ -1,0 +1,54 @@
+extends SceneTree
+
+const CORE = preload("res://scripts/climb_physics_2d.gd")
+const WAIT_FRAMES := 240
+
+func _initialize() -> void:
+    call_deferred("_run")
+
+func _run() -> void:
+    var world := Node2D.new()
+    root.add_child(world)
+    var core := CORE.new()
+    world.add_child(core)
+    await process_frame
+    core.add_static_box(Vector2(0.0, 2.0), Vector2(30.0, 0.5), 0.0, 1.0, 0.0)
+    core.add_static_box(Vector2(3.0, -0.2), Vector2(0.35, 8.0), 0.0, 0.9, 0.0)
+    core.configure_start(Vector2(0.0, -0.1))
+    await physics_frame
+    var start_y := core.pot.global_position.y
+    for i in range(WAIT_FRAMES):
+        await physics_frame
+    var floor_ok := core.pot.global_position.y > 0.8 and core.pot.global_position.y < 2.0
+    _assert(floor_ok, "Pot must settle on the floor, not tunnel through it")
+
+    # A fixed target does not inject upward velocity into the pot.
+    core.set_target_world(Vector2(0.8, -2.0))
+    var stable_y := core.pot.global_position.y
+    for i in range(120):
+        await physics_frame
+    var idle_ok := core.pot.global_position.y >= stable_y - 0.45
+    _assert(idle_ok, "A stationary finger must not launch the pot")
+
+    # Drive the hammer into the vertical wall. Continuous collision and the
+    # pin joint should stop it at the wall and transfer reaction to the pot.
+    var pot_before := core.pot.global_position
+    core.set_target_world(Vector2(2.8, -1.0))
+    for i in range(180):
+        await physics_frame
+    var hammer_ok := core.hammer.global_position.x < 3.0
+    _assert(hammer_ok, "Hammer must not pass through the wall")
+    var reaction_ok := core.pot.global_position.distance_to(pot_before) > 0.04
+    _assert(reaction_ok, "Hammer contact must transfer motion through the shoulder joint")
+
+    print("CLIMB_PHYSICS_2D_TESTS: ", "PASS" if _failures == 0 else "FAIL")
+    quit(0 if _failures == 0 else 1)
+
+var _failures := 0
+
+func _assert(condition: bool, message: String) -> void:
+    if not condition:
+        _failures += 1
+        push_error("TEST FAILED: " + message)
+    else:
+        print("TEST PASSED: " + message)
