@@ -1369,7 +1369,7 @@ func _reset_player() -> void:
     player.reset_hammer()
     game_over = false
     restart_button.visible = false
-    status_label.text = "КАСАЙСЯ ЭКРАНА И ВЕДИ СЕРП  •  ЦЕПЛЯЙСЯ ЗА КРАЯ"
+    status_label.text = "ТЕНЬ НАЧИНАЕТСЯ. ЦЕПЛЯЙСЯ ЗА ЧЁРНЫЕ ВЫСТУПЫ." if current_level == 2 else _t("touch")
 
 
 
@@ -1384,8 +1384,8 @@ func _fall_back_to_start() -> void:
     game_over = false
     finished = false
     restart_button.visible = false
-    checkpoint_label.text = _t("checkpoint")
-    status_label.text = _t("touch")
+    checkpoint_label.text = "ТЕНЕВОЙ УРОВЕНЬ  •  КП 0" if current_level == 2 else _t("checkpoint")
+    status_label.text = "ТЕНЬ НАЧИНАЕТСЯ. ЦЕПЛЯЙСЯ ЗА ЧЁРНЫЕ ВЫСТУПЫ." if current_level == 2 else _t("touch")
 
 func _on_win_primary_action() -> void:
     if current_level == 1:
