@@ -1098,12 +1098,7 @@ func _process(delta: float) -> void:
     camera.global_position = camera.global_position.lerp(target_camera, 1.0 - exp(-4.2 * delta))
     camera.look_at(player.global_position + Vector3(0, 2.25, 0), Vector3.UP)
     if player.global_position.y < -8.0 and not game_over:
-        game_over = true
-        player.release_pointer()
-        player.velocity = Vector3.ZERO
-        player.set_physics_process(false)
-        status_label.text = _t("fall")
-        restart_button.visible = true
+        _fall_back_to_start()
 
 func _check_checkpoint() -> void:
     for i in range(active_checkpoint, checkpoint_positions.size()):
@@ -1134,6 +1129,21 @@ func _reset_player() -> void:
     restart_button.visible = false
     status_label.text = "КАСАЙСЯ ЭКРАНА И ВЕДИ СЕРП  •  ЦЕПЛЯЙСЯ ЗА КРАЯ"
 
+
+
+func _fall_back_to_start() -> void:
+    # Falling below the playable area returns the climber to the actual start platform.
+    # Checkpoints remain available for manual reset, but a fall always restarts at the beginning.
+    player.release_pointer()
+    player.velocity = Vector3.ZERO
+    player.global_position = Vector3(0.0, 1.0, 0.0)
+    player.reset_hammer()
+    active_checkpoint = 0
+    game_over = false
+    finished = false
+    restart_button.visible = false
+    checkpoint_label.text = _t("checkpoint")
+    status_label.text = _t("touch")
 
 func _restart_run() -> void:
     active_checkpoint = 0
