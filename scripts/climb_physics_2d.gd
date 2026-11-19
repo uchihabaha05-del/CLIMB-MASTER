@@ -17,11 +17,12 @@ const MAX_HAMMER_LINEAR_SPEED := 24.0
 const POT_RADIUS := 0.72
 const HAMMER_SHAFT_LENGTH := 2.65
 const HAMMER_HEAD_RADIUS := 0.24
+const DEFAULT_TARGET_ANGLE := -0.72
 
 var pot: RigidBody2D
 var hammer: RigidBody2D
 var shoulder_joint: PinJoint2D
-var target_angle := -0.72
+var target_angle := DEFAULT_TARGET_ANGLE
 var target_world := Vector2.ZERO
 var initialized := false
 var last_contact := false
@@ -91,6 +92,7 @@ func _material(friction: float, bounce: float) -> PhysicsMaterial:
 func configure_start(world_position: Vector2, rotation: float = 0.0) -> void:
     if not initialized:
         return
+    target_angle = DEFAULT_TARGET_ANGLE
     pot.global_position = world_position
     pot.rotation = rotation
     pot.linear_velocity = Vector2.ZERO
@@ -106,7 +108,7 @@ func _rebuild_shoulder_joint() -> void:
     # Recreate the constraint after positioning both bodies. This makes the
     # initial local anchors unambiguous on reset and prevents a stale origin pin.
     if is_instance_valid(shoulder_joint):
-        shoulder_joint.queue_free()
+        shoulder_joint.free()
     shoulder_joint = PinJoint2D.new()
     shoulder_joint.name = "ShoulderPin"
     # Keep the joint in the pot's local frame so its anchor follows the pot.
