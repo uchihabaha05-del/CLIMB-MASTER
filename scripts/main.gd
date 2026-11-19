@@ -517,6 +517,7 @@ func _build_shadow_level_course() -> void:
     # A harder upper route: narrow alternating ledges, extra hook points and
     # black moving silhouettes. The continuous mountain material is untouched.
     var shadow_ledge := Color(0.035, 0.035, 0.045)
+    _add_platform(Vector3(level_two_start.x, 24.0, 0.0), Vector3(2.7, 0.5, 2.3), shadow_ledge)
     for i in range(10):
         var x := -1.35 if i % 2 == 0 else 1.35
         var y := 25.50 + float(i) * 2.35
@@ -543,6 +544,19 @@ func _build_shadow_level_course() -> void:
         hit.shape = hit_shape
         hold.add_child(hit)
         add_child(hold)
+
+    var summit_shadow := MeshInstance3D.new()
+    var summit_ring := TorusMesh.new()
+    summit_ring.inner_radius = 0.72
+    summit_ring.outer_radius = 0.94
+    summit_shadow.mesh = summit_ring
+    summit_shadow.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+    var summit_black := StandardMaterial3D.new()
+    summit_black.albedo_color = Color.BLACK
+    summit_black.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+    summit_shadow.material_override = summit_black
+    summit_shadow.position = level_two_finish
+    add_child(summit_shadow)
 
     # Distinct silhouette hazards: black pendulum weights and bars with real collision.
     for i in range(6):
