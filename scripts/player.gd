@@ -143,16 +143,7 @@ func _mirror_static_3d_colliders() -> void:
             physics_world.add_static_circle(center, cylinder.radius * maxf(absf(scale_3d.x), absf(scale_3d.y)), friction)
         elif shape is CapsuleShape3D:
             var capsule_3d := shape as CapsuleShape3D
-            var capsule_2d := CapsuleShape2D.new()
-            capsule_2d.radius = capsule_3d.radius * absf(scale_3d.x)
-            capsule_2d.height = capsule_3d.height * absf(scale_3d.y)
-            var body := StaticBody2D.new()
-            body.position = center
-            body.rotation = rotation_2d
-            var collision := CollisionShape2D.new()
-            collision.shape = capsule_2d
-            body.add_child(collision)
-            physics_world.add_child(body)
+            physics_world.add_static_capsule(center, capsule_3d.radius * absf(scale_3d.x), capsule_3d.height * absf(scale_3d.y), rotation_2d, friction)
         elif shape is ConvexPolygonShape3D:
             var convex := shape as ConvexPolygonShape3D
             var points := PackedVector2Array()
