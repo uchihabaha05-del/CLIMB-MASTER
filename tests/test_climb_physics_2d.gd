@@ -60,8 +60,11 @@ func _run() -> void:
     # Surface materials and reset must remain deterministic after a fall.
     var ice := core.add_static_box(Vector2(-5.0, 0.0), Vector2(1.0, 1.0), 0.0, 0.035)
     var rock := core.add_static_box(Vector2(-7.0, 0.0), Vector2(1.0, 1.0), 0.0, 1.18)
+    var capsule := core.add_static_capsule(Vector2(-9.0, 0.0), 0.3, 1.2, 0.0, 0.42)
     _assert(ice.physics_material_override.friction < rock.physics_material_override.friction,
         "Ice must be more slippery than rock")
+    _assert(is_equal_approx(capsule.physics_material_override.friction, 0.42),
+        "Capsule colliders must preserve their source surface friction")
     core.pot.linear_velocity = Vector2(4.0, 2.0)
     core.reset_to(Vector2(-2.0, -1.0))
     await physics_frame
