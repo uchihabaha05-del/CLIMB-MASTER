@@ -144,6 +144,8 @@ func _build_world() -> void:
         var tilt := -0.035 if i % 2 == 0 else 0.035
         _add_platform(Vector3(point.x, point.y, 0.0), LEDGE_SIZE, ledge_colors[i % ledge_colors.size()], tilt)
 
+    _build_climbable_rock_holds()
+
     # Keep the central climbing lane readable. Natural cliff outcrops frame
     # the route from the far left and right instead of spawning in front of it.
     for side in [-1.0, 1.0]:
@@ -174,6 +176,44 @@ func _build_world() -> void:
 
 
 
+
+func _build_climbable_rock_holds() -> void:
+    # Natural, collidable handholds sit on the playable Z plane.
+    # They add alternative hook points between the broad route platforms.
+    var rock_palette := [
+        Color(0.30, 0.32, 0.33), Color(0.36, 0.32, 0.27),
+        Color(0.25, 0.29, 0.32), Color(0.39, 0.35, 0.30)
+    ]
+    for i in range(20):
+        var side := -1.0 if i % 2 == 0 else 1.0
+        var tier := float(i)
+        var hold := StaticBody3D.new()
+        hold.name = "ClimbableRockHold_%02d" % i
+        hold.position = Vector3(side * (2.55 + float(i % 3) * 0.22), 1.15 + tier * 1.12, -0.18)
+        hold.collision_layer = 1
+        hold.collision_mask = 1
+
+        var rock := MeshInstance3D.new()
+        var rock_mesh := SphereMesh.new()
+        rock_mesh.radius = 1.0
+        rock_mesh.height = 1.65
+        rock.mesh = rock_mesh
+        var radius := 0.42 + float(i % 4) * 0.055
+        rock.scale = Vector3(radius * 1.28, radius, 0.48)
+        rock.rotation = Vector3(float(i % 3) * 0.11, float(i % 5) * 0.17, float(i % 4) * 0.09)
+        var material := StandardMaterial3D.new()
+        material.albedo_color = rock_palette[i % rock_palette.size()]
+        material.roughness = 0.97
+        rock.material_override = material
+        hold.add_child(rock)
+
+        var collision := CollisionShape3D.new()
+        var shape := SphereShape3D.new()
+        shape.radius = radius
+        collision.shape = shape
+        collision.scale = Vector3(1.28, 1.0, 0.85)
+        hold.add_child(collision)
+        add_child(hold)
 
 func _build_mountain_backdrop() -> void:
     # One continuous, triangulated cliff face replaces the old tiled sphere backdrop.
