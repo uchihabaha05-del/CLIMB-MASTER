@@ -65,7 +65,6 @@ func _build_bodies() -> void:
     hammer.max_contacts_reported = 8
     hammer.continuous_cd = RigidBody2D.CCD_MODE_CAST_SHAPE
     hammer.physics_material_override = _material(HAMMER_FRICTION, 0.0)
-    add_child(hammer)
 
     var shaft_shape := CollisionShape2D.new()
     var shaft := RectangleShape2D.new()
@@ -84,6 +83,7 @@ func _build_bodies() -> void:
     # so the shoulder pin does not orbit around the shaft's geometric centroid.
     hammer.center_of_mass_mode = RigidBody2D.CENTER_OF_MASS_MODE_CUSTOM
     hammer.center_of_mass = Vector2.ZERO
+    add_child(hammer)
 
     initialized = true
 
