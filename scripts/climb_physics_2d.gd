@@ -98,6 +98,8 @@ func configure_start(world_position: Vector2, rotation: float = 0.0) -> void:
         return
     pot.global_position = world_position
     pot.rotation = rotation
+    if is_instance_valid(shoulder_joint):
+        shoulder_joint.global_position = world_position + Vector2(0.30, -0.72).rotated(rotation)
     pot.linear_velocity = Vector2.ZERO
     pot.angular_velocity = 0.0
     hammer.global_position = pot.global_position + Vector2(0.30, -0.72)
