@@ -83,7 +83,7 @@ func _build_bodies() -> void:
     shoulder_joint.position = Vector2.ZERO
     shoulder_joint.node_a = NodePath("../PotBody")
     shoulder_joint.node_b = NodePath("../HammerBody")
-    shoulder_joint.disable_collision = false
+    shoulder_joint.disable_collision = true
     add_child(shoulder_joint)
     initialized = true
 
