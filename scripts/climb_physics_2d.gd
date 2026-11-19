@@ -78,16 +78,6 @@ func _build_bodies() -> void:
     head_shape.position = Vector2(0.88, -HAMMER_SHAFT_LENGTH - 0.48)
     hammer.add_child(head_shape)
 
-    shoulder_joint = PinJoint2D.new()
-    shoulder_joint.name = "ShoulderPin"
-    shoulder_joint.position = Vector2.ZERO
-    # Resolve absolute paths after both rigid bodies are in the scene tree.
-    # Joint2D paths are relative to the joint itself; explicit absolute paths
-    # avoid accidentally resolving a sibling from the wrong parent scope.
-    shoulder_joint.node_a = pot.get_path()
-    shoulder_joint.node_b = hammer.get_path()
-    shoulder_joint.disable_collision = true
-    add_child(shoulder_joint)
     initialized = true
 
 func _material(friction: float, bounce: float) -> PhysicsMaterial:
@@ -101,15 +91,27 @@ func configure_start(world_position: Vector2, rotation: float = 0.0) -> void:
         return
     pot.global_position = world_position
     pot.rotation = rotation
-    if is_instance_valid(shoulder_joint):
-        shoulder_joint.global_position = world_position + Vector2(0.30, -0.72).rotated(rotation)
     pot.linear_velocity = Vector2.ZERO
     pot.angular_velocity = 0.0
-    hammer.global_position = pot.global_position + Vector2(0.30, -0.72)
+    hammer.global_position = pot.global_position + Vector2(0.30, -0.72).rotated(rotation)
     hammer.rotation = target_angle
     hammer.linear_velocity = Vector2.ZERO
     hammer.angular_velocity = 0.0
+    _rebuild_shoulder_joint()
     target_world = hammer.global_position + Vector2.UP.rotated(target_angle) * ARM_REACH
+
+func _rebuild_shoulder_joint() -> void:
+    # Recreate the constraint after positioning both bodies. This makes the
+    # initial local anchors unambiguous on reset and prevents a stale origin pin.
+    if is_instance_valid(shoulder_joint):
+        shoulder_joint.queue_free()
+    shoulder_joint = PinJoint2D.new()
+    shoulder_joint.name = "ShoulderPin"
+    add_child(shoulder_joint)
+    shoulder_joint.global_position = pot.global_position + Vector2(0.30, -0.72).rotated(pot.rotation)
+    shoulder_joint.node_a = pot.get_path()
+    shoulder_joint.node_b = hammer.get_path()
+    shoulder_joint.disable_collision = true
 
 func set_target_world(world_point: Vector2) -> void:
     target_world = world_point
