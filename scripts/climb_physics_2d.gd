@@ -58,6 +58,10 @@ func _build_bodies() -> void:
     hammer = RigidBody2D.new()
     hammer.name = "HammerBody"
     hammer.mass = HAMMER_MASS
+    # The tool is gripped at its body origin; keep its centre of mass there
+    # so the shoulder pin does not orbit around the shaft's geometric centroid.
+    hammer.center_of_mass_mode = RigidBody2D.CENTER_OF_MASS_MODE_CUSTOM
+    hammer.center_of_mass = Vector2.ZERO
     hammer.linear_damp = 0.025
     hammer.angular_damp = 0.12
     hammer.can_sleep = false
