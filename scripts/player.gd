@@ -37,6 +37,7 @@ const LEFT_HAND_REST := Vector3((140.0 - 300.0) * PX, ART_BASE_Y - (430.0 - 350.
 var hammer_pivot: Node3D
 var hammer_head: Node3D
 var scythe_contact_valid := false
+var is_gripping_hold := false
 var scythe_contact_point := Vector3.ZERO
 var scythe_contact_collider: Object = null
 var scythe_probe := SphereShape3D.new()
@@ -423,6 +424,7 @@ func _probe_scythe(angle: float) -> Dictionary:
 
 func _update_scythe(delta: float) -> void:
     scythe_contact_valid = false
+    is_gripping_hold = false
     scythe_contact_collider = null
     if not dragging:
         if hazard_cooldown <= 0.0:
@@ -465,6 +467,10 @@ func _update_scythe(delta: float) -> void:
     scythe_contact_valid = true
     scythe_contact_point = contact["point"]
     scythe_contact_collider = contact.get("collider")
+    var contacted_node := scythe_contact_collider as Node
+    if is_instance_valid(contacted_node) and contacted_node.is_in_group("climbable_hold"):
+        is_gripping_hold = true
+        hook_feedback = "Зацепился за выступ! Двигай серп, чтобы перелезть."
     if absf(step_total) < 0.0005:
         hook_feedback = "Упёрся. Веди палец, чтобы оттолкнуться."
     else:
@@ -514,6 +520,7 @@ func reset_hammer() -> void:
     release_pointer()
     scythe_contact_valid = false
     scythe_contact_collider = null
+    is_gripping_hold = false
     hook_feedback = IDLE_HINT
     _update_pivot()
     _update_arms()
@@ -573,6 +580,11 @@ func _physics_process(delta: float) -> void:
         velocity.y -= GRAVITY * delta
 
     _update_scythe(delta)
+    # A rock hold supports the climber while the blade remains hooked.
+    # Releasing the finger or moving the blade clear restores normal gravity immediately.
+    if is_gripping_hold:
+        velocity.y = maxf(velocity.y, -0.35)
+        velocity.y = move_toward(velocity.y, 0.0, 24.0 * delta)
 
     if is_on_floor():
         velocity.x = move_toward(velocity.x, 0.0, FLOOR_FRICTION * delta)
