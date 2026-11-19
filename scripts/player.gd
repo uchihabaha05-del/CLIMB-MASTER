@@ -108,16 +108,30 @@ func _initialize_2d_physics() -> void:
 
 func _track_animated_collider(source: CollisionShape3D, owner: Node, mirrored: StaticBody2D) -> void:
     if owner is AnimatableBody3D:
-        mirrored_animated_colliders.append({"source": source, "body": mirrored})
+        var initial_position := Vector2(source.global_position.x, -source.global_position.y)
+        var initial_rotation := -source.global_rotation.z
+        mirrored_animated_colliders.append({"source": source, "body": mirrored, "last_position": initial_position, "last_rotation": initial_rotation})
 
-func _sync_animated_colliders() -> void:
-    for entry in mirrored_animated_colliders:
+func _sync_animated_colliders(delta: float) -> void:
+    if delta <= 0.0:
+        return
+    for i in range(mirrored_animated_colliders.size()):
+        var entry: Dictionary = mirrored_animated_colliders[i]
         var source := entry.get("source") as CollisionShape3D
         var mirrored := entry.get("body") as StaticBody2D
         if not is_instance_valid(source) or not is_instance_valid(mirrored):
             continue
-        mirrored.global_position = Vector2(source.global_position.x, -source.global_position.y)
-        mirrored.global_rotation = -source.global_rotation.z
+        var current_position := Vector2(source.global_position.x, -source.global_position.y)
+        var current_rotation := -source.global_rotation.z
+        var previous_position: Vector2 = entry.get("last_position", current_position)
+        var previous_rotation: float = entry.get("last_rotation", current_rotation)
+        mirrored.constant_linear_velocity = (current_position - previous_position) / delta
+        mirrored.constant_angular_velocity = wrapf(current_rotation - previous_rotation, -PI, PI) / delta
+        mirrored.global_position = current_position
+        mirrored.global_rotation = current_rotation
+        entry["last_position"] = current_position
+        entry["last_rotation"] = current_rotation
+        mirrored_animated_colliders[i] = entry
 
 func _mirror_static_3d_colliders() -> void:
     var scene_root := get_tree().current_scene
@@ -730,7 +744,7 @@ func _physics_process(delta: float) -> void:
     if not is_instance_valid(physics_world) or not is_instance_valid(physics_world.pot):
         _update_arms()
         return
-    _sync_animated_colliders()
+    _sync_animated_colliders(delta)
     var pot_position := physics_world.sync_visible_position()
     global_position = Vector3(pot_position.x, -pot_position.y, PLAY_PLANE_Z)
     aim_angle = wrapf(-physics_world.hammer.rotation, -PI, PI)
