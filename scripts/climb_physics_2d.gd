@@ -118,13 +118,13 @@ func _rebuild_shoulder_joint() -> void:
         shoulder_joint.free()
     shoulder_joint = PinJoint2D.new()
     shoulder_joint.name = "ShoulderPin"
-    # Keep the joint as a sibling of both rigid bodies. Its world-space anchor
-    # follows the pot shoulder, avoiding inherited body transforms on the joint.
-    add_child(shoulder_joint)
-    shoulder_joint.global_position = pot.global_position + Vector2(0.30, -0.72).rotated(pot.rotation)
+    # Configure the complete joint before entering the scene tree so the physics
+    # server captures the already-positioned bodies and their correct local anchors.
+    shoulder_joint.position = pot.global_position + Vector2(0.30, -0.72).rotated(pot.rotation)
     shoulder_joint.node_a = pot.get_path()
     shoulder_joint.node_b = hammer.get_path()
     shoulder_joint.disable_collision = true
+    add_child(shoulder_joint)
 
 func set_target_world(world_point: Vector2) -> void:
     target_world = world_point
