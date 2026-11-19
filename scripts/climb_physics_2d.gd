@@ -98,6 +98,11 @@ func _on_hammer_body_entered(body: Node) -> void:
         last_contact = true
 
 func _on_hammer_body_exited(_body: Node) -> void:
+    last_contact = false
+    for contacted_body in hammer.get_colliding_bodies():
+        if contacted_body != pot:
+            last_contact = true
+            break
 
 func _material(friction: float, bounce: float) -> PhysicsMaterial:
     var result := PhysicsMaterial.new()
