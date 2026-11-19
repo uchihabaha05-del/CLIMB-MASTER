@@ -471,7 +471,10 @@ func _update_scythe(delta: float) -> void:
     if is_instance_valid(contacted_node) and contacted_node.is_in_group("climbable_hold"):
         is_gripping_hold = true
         hook_feedback = "Зацепился за выступ! Двигай серп, чтобы перелезть."
-    if absf(step_total) < 0.0005:
+    if is_gripping_hold:
+        if absf(step_total) >= 0.0005:
+            _apply_scythe_push(contact, step_total)
+    elif absf(step_total) < 0.0005:
         hook_feedback = "Упёрся. Веди палец, чтобы оттолкнуться."
     else:
         hook_feedback = "Есть упор! Веди серп дальше, чтобы подняться."
