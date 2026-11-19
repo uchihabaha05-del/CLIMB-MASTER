@@ -45,6 +45,8 @@ func _run() -> void:
     var joint_b := core.shoulder_joint.get_node_or_null(core.shoulder_joint.node_b)
     var joint_ok := joint_a == core.pot and joint_b == core.hammer
     _assert(joint_ok, "Shoulder joint must resolve the pot and hammer bodies")
+    var shoulder_alignment := core.hammer.global_position.distance_to(core.shoulder_joint.global_position)
+    _assert(shoulder_alignment < 0.12, "Hammer grip must stay aligned with the shoulder pin")
     var hammer_contacts := core.hammer.get_contact_count()
     var hammer_head := core.hammer.to_global(Vector2(0.88, -3.13))
     var head_before_wall := hammer_head.x <= 3.08
