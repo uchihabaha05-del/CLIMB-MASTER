@@ -120,8 +120,15 @@ func _mirror_static_3d_colliders() -> void:
         var center := Vector2(source.global_position.x, -source.global_position.y)
         var rotation_2d := -source.global_rotation.z
         var scale_3d := source.global_transform.basis.get_scale()
-        var friction := 0.85
+        var friction := 0.82
         var source_body := owner as StaticBody3D
+        var body_name := source_body.name.to_lower()
+        if body_name.contains("ice") or body_name.contains("frozen"):
+            friction = 0.035
+        elif body_name.contains("metal") or body_name.contains("steel") or body_name.contains("pipe"):
+            friction = 0.42
+        elif body_name.contains("rock") or body_name.contains("boulder") or body_name.contains("cliff"):
+            friction = 1.18
         if source_body.physics_material_override != null:
             friction = source_body.physics_material_override.friction
         var shape := source.shape
