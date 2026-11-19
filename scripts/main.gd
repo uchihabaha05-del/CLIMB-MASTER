@@ -31,8 +31,6 @@ var reset_button: Button
 var win_overlay: Control
 var win_label: Label
 var game_over := false
-var checkpoint_positions: Array[Vector3] = []
-var active_checkpoint := 0
 var checkpoint_label: Label
 var record_label: Label
 var climb_progress: ProgressBar
@@ -746,7 +744,6 @@ func _build_shadow_level_course() -> void:
         add_child(hazard)
 
 func _build_checkpoints() -> void:
-    checkpoint_positions.clear()
     _build_finish_marker()
 
 func _build_finish_marker() -> void:
@@ -1418,7 +1415,6 @@ func _process(delta: float) -> void:
     if not is_instance_valid(player):
         return
     var h := maxf(0.0, player.global_position.y - start_y)
-    _check_checkpoint()
     if player.hook_feedback != last_player_feedback:
         last_player_feedback = player.hook_feedback
         status_label.text = _localized_feedback(last_player_feedback)
@@ -1439,9 +1435,6 @@ func _process(delta: float) -> void:
     if player.global_position.y < -8.0 and not game_over:
         _fall_back_to_start()
 
-func _check_checkpoint() -> void:
-    active_checkpoint = 0
-
 func _reset_player() -> void:
     get_tree().paused = false
     player.release_pointer()
@@ -1453,8 +1446,6 @@ func _reset_player() -> void:
     if is_instance_valid(pause_overlay):
         pause_overlay.visible = false
     var respawn := Vector3(0, 1.0, 0) if current_level == 1 else level_two_start
-    if active_checkpoint > 0:
-        respawn = checkpoint_positions[active_checkpoint - 1] + Vector3(0, 0.65, 0)
     respawn.z = 0.0
     player.global_position = respawn
     player.velocity = Vector3.ZERO
@@ -1473,7 +1464,6 @@ func _fall_back_to_start() -> void:
     player.velocity = Vector3.ZERO
     player.global_position = Vector3(0.0, 1.0, 0.0) if current_level == 1 else level_two_start
     player.reset_hammer()
-    active_checkpoint = 0
     game_over = false
     finished = false
     restart_button.visible = false
