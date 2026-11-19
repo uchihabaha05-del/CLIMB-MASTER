@@ -1,12 +1,12 @@
-name: Android Debug APK
+name: Godot Validation
 
 on:
-  workflow_dispatch:
   push:
-    branches: [ main, cloud-fixes-review, gameplay-path-audit, plugin-integration, rebuild/physics-core ]
+    branches: [rebuild/physics-core]
+  workflow_dispatch:
 
 jobs:
-  export:
+  validate:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -17,38 +17,6 @@ jobs:
         with:
           version: 4.3.0
           use-dotnet: false
-
-      - name: Install Android SDK packages
-        uses: android-actions/setup-android@v3
-        with:
-          packages: platform-tools platforms;android-34 build-tools;34.0.0 cmdline-tools;latest cmake;3.10.2.4988404 ndk;23.2.8568313
-
-      - name: Install Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Install Godot export templates
-        run: |
-          mkdir -p ~/.local/share/godot/export_templates/4.3.stable
-          wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz -O /tmp/templates.tpz
-          unzip -q /tmp/templates.tpz -d /tmp/godot-templates
-          cp -r /tmp/godot-templates/templates/* ~/.local/share/godot/export_templates/4.3.stable/
-
-      - name: Configure Godot Android export settings
-        run: |
-          mkdir -p ~/.config/godot ~/.android
-          keytool -genkeypair -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-          cat > ~/.config/godot/editor_settings-4.tres <<EOF
-          [gd_resource type="EditorSettings" format=3]
-          [resource]
-          export/android/android_sdk_path = "$ANDROID_HOME"
-          export/android/java_sdk_path = "$JAVA_HOME"
-          export/android/debug_keystore = "$HOME/.android/debug.keystore"
-          export/android/debug_keystore_user = "androiddebugkey"
-          export/android/debug_keystore_pass = "android"
-          EOF
 
       - name: Import project
         run: godot --headless --editor --path . --quit
@@ -68,43 +36,3 @@ jobs:
         run: |
           set -o pipefail
           godot --headless --path . --script res://tests/test_climb_physics_2d.gd 2>&1 | tee /tmp/climb-physics-tests.log
-
-      - name: Diagnose Android export configuration
-        shell: bash
-        run: |
-          set +e
-          echo "=== Godot and Java versions ==="
-          godot --version
-          java -version
-          echo "=== Environment paths ==="
-          printf 'HOME=%s\\nANDROID_HOME=%s\\nJAVA_HOME=%s\\n' "$HOME" "$ANDROID_HOME" "$JAVA_HOME"
-          echo "=== Android SDK components ==="
-          for p in "$ANDROID_HOME/platform-tools/adb" "$ANDROID_HOME/platforms/android-34/android.jar" "$ANDROID_HOME/build-tools/34.0.0/aapt2" "$ANDROID_HOME/ndk/23.2.8568313" "$ANDROID_HOME/cmake/3.10.2.4988404"; do
-            if test -e "$p"; then echo "OK: $p"; else echo "MISSING: $p"; fi
-          done
-          echo "=== Godot templates ==="
-          ls -lah "$HOME/.local/share/godot/export_templates/4.3.stable/" | head -35
-          echo "=== Godot editor settings ==="
-          grep -E 'android_sdk_path|java_sdk_path|debug_keystore' "$HOME/.config/godot/editor_settings-4.tres" | sed -E 's/(password|pass) = .*/\\1 = [redacted]/'
-          echo "=== Android export preset fields ==="
-          grep -E '^(name|platform|package/|keystore/|architectures/)' export_presets.cfg | sed -E 's/(password) = .*/\\1 = [redacted]/'
-          echo "=== Debug signing key ==="
-          keytool -list -keystore "$HOME/.android/debug.keystore" -storepass android -alias androiddebugkey | head -12
-          echo "=== Import diagnostics ==="
-          godot --headless --verbose --editor --path . --quit 2>&1 | tail -90
-          echo "=== End diagnostics ==="
-
-      - name: Export Android APK
-        env:
-          GODOT_ANDROID_KEYSTORE_DEBUG_PATH: /home/runner/.android/debug.keystore
-          GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
-          GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
-        run: |
-          mkdir -p build
-          godot --headless --verbose --path . --export-debug "Android" build/CLIMB-MASTER-debug.apk
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: CLIMB-MASTER-Android-debug
-          path: build/CLIMB-MASTER-debug.apk
