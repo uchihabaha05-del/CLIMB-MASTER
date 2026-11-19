@@ -70,7 +70,11 @@ func _run() -> void:
     await physics_frame
     var reset_position_ok := core.pot.global_position.distance_to(Vector2(-2.0, -1.0)) < 0.08
     var reset_hammer_ok := core.hammer.global_position.distance_to(core.pot.global_position + Vector2(0.30, -0.72)) < 0.08
-    var reset_velocity_ok := core.pot.linear_velocity.length() < 0.05
+    var reset_velocity_ok := core.pot.linear_velocity.length() < 0.05 and core.hammer.linear_velocity.length() < 0.05
+    print("RESET_DIAGNOSTIC: pot=", core.pot.global_position, " hammer=", core.hammer.global_position,
+        " expected_hammer=", core.pot.global_position + Vector2(0.30, -0.72),
+        " pot_velocity=", core.pot.linear_velocity, " hammer_velocity=", core.hammer.linear_velocity,
+        " rotation=", core.hammer.rotation, " target=", core.target_angle)
     _assert(reset_position_ok and reset_hammer_ok and reset_velocity_ok,
         "Reset must restore pot, hammer anchor and velocity")
 
