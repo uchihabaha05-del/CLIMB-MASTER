@@ -12,6 +12,10 @@ window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 window/handheld/orientation=0
 
+[physics]
+2d/default_gravity=980.0
+common/physics_ticks_per_second=120
+
 [rendering]
 textures/vram_compression/import_etc2_astc=true
 renderer/rendering_method="gl_compatibility"
