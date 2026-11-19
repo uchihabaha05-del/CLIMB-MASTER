@@ -13,7 +13,7 @@ func _run() -> void:
     world.add_child(core)
     await process_frame
     core.add_static_box(Vector2(0.0, 2.0), Vector2(30.0, 0.5), 0.0, 1.0, 0.0)
-    var wall := core.add_static_box(Vector2(2.0, -0.2), Vector2(0.6, 8.0), 0.0, 0.9, 0.0)
+    var wall := core.add_static_box(Vector2(2.7, -0.2), Vector2(0.6, 8.0), 0.0, 0.9, 0.0)
     core.configure_start(Vector2(0.0, -0.1))
     await physics_frame
     var start_y := core.pot.global_position.y
@@ -47,7 +47,7 @@ func _run() -> void:
     var hammer_contacts := core.hammer.get_contact_count()
     var wall_contact := core.hammer.get_colliding_bodies().has(wall)
     var hammer_head := core.hammer.to_global(Vector2(1.31, -4.14))
-    var head_before_wall := hammer_head.x <= 2.54
+    var head_before_wall := hammer_head.x <= 3.24
     _assert(wall_contact and head_before_wall, "Hammer head must contact the wall without tunnelling")
     _assert(core.last_contact, "World contact must be exposed to the climbing HUD")
     var pot_displacement := core.pot.global_position.distance_to(pot_before)
