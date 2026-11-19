@@ -9,8 +9,8 @@ const POT_FRICTION := 1.15
 const HAMMER_MASS := 0.85
 const HAMMER_FRICTION := 0.9
 const ARM_REACH := 4.3
-const MOTOR_TORQUE := 95.0
-const MOTOR_KP := 155.0
+const MOTOR_TORQUE := 75.0
+const MOTOR_KP := 135.0
 const MOTOR_KD := 18.0
 const MAX_HAMMER_ANGULAR_SPEED := 8.5
 const MAX_HAMMER_LINEAR_SPEED := 24.0
@@ -18,9 +18,9 @@ const POT_RADIUS := 0.72
 const HAMMER_SHAFT_LENGTH := 2.65
 const HAMMER_HEAD_RADIUS := 0.24
 const DEFAULT_TARGET_ANGLE := -0.72
-const SHOULDER_STIFFNESS := 10000.0
-const SHOULDER_DAMPING := 200.0
-const SHOULDER_MAX_FORCE := 7000.0
+const SHOULDER_STIFFNESS := 18000.0
+const SHOULDER_DAMPING := 280.0
+const SHOULDER_MAX_FORCE := 12000.0
 
 var pot: RigidBody2D
 var hammer: RigidBody2D
@@ -88,8 +88,16 @@ func _build_bodies() -> void:
     hammer.center_of_mass = Vector2.ZERO
     add_child(hammer)
     hammer.add_collision_exception_with(pot)
+    hammer.body_entered.connect(_on_hammer_body_entered)
+    hammer.body_exited.connect(_on_hammer_body_exited)
 
     initialized = true
+
+func _on_hammer_body_entered(body: Node) -> void:
+    if body != pot:
+        last_contact = true
+
+func _on_hammer_body_exited(_body: Node) -> void:
 
 func _material(friction: float, bounce: float) -> PhysicsMaterial:
     var result := PhysicsMaterial.new()
@@ -101,6 +109,7 @@ func configure_start(world_position: Vector2, rotation: float = 0.0) -> void:
     if not initialized:
         return
     target_angle = DEFAULT_TARGET_ANGLE
+    last_contact = false
     pot.global_position = world_position
     pot.rotation = rotation
     pot.linear_velocity = Vector2.ZERO
