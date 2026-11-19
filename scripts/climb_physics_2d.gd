@@ -121,8 +121,8 @@ func _rebuild_shoulder_joint() -> void:
     # Parent the joint to the pot so its local shoulder anchor follows pot motion.
     # Configure it before entering the tree to capture the positioned bodies.
     shoulder_joint.position = Vector2(0.30, -0.72)
-    shoulder_joint.node_a = NodePath("..")
-    shoulder_joint.node_b = NodePath("../../HammerBody")
+    shoulder_joint.node_a = pot.get_path()
+    shoulder_joint.node_b = hammer.get_path()
     shoulder_joint.disable_collision = true
     pot.add_child(shoulder_joint)
 
