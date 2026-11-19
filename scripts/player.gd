@@ -734,6 +734,12 @@ func _physics_process(delta: float) -> void:
     var pot_position := physics_world.sync_visible_position()
     global_position = Vector3(pot_position.x, -pot_position.y, PLAY_PLANE_Z)
     aim_angle = wrapf(-physics_world.hammer.rotation, -PI, PI)
+    if physics_world.last_contact:
+        hook_feedback = "Упёрся. Веди палец, чтобы оттолкнуться."
+    elif dragging:
+        hook_feedback = "Коснись экрана и веди серп к камню."
+    else:
+        hook_feedback = IDLE_HINT
     rotation.z = -physics_world.pot.rotation
     _update_pivot()
     _update_arms()
