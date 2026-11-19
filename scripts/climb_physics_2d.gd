@@ -18,10 +18,13 @@ const POT_RADIUS := 0.72
 const HAMMER_SHAFT_LENGTH := 2.65
 const HAMMER_HEAD_RADIUS := 0.24
 const DEFAULT_TARGET_ANGLE := -0.72
+const SHOULDER_STIFFNESS := 5200.0
+const SHOULDER_DAMPING := 125.0
+const SHOULDER_MAX_FORCE := 4200.0
 
 var pot: RigidBody2D
 var hammer: RigidBody2D
-var shoulder_joint: PinJoint2D
+var shoulder_anchor: Marker2D
 var target_angle := DEFAULT_TARGET_ANGLE
 var target_world := Vector2.ZERO
 var initialized := false
@@ -111,24 +114,30 @@ func configure_start(world_position: Vector2, rotation: float = 0.0) -> void:
     # Flush both teleports to the physics server before the joint captures its anchors.
     pot.force_update_transform()
     hammer.force_update_transform()
-    _rebuild_shoulder_joint()
+    _rebuild_shoulder_anchor()
     target_world = hammer.global_position + Vector2.UP.rotated(target_angle) * ARM_REACH
 
-func _rebuild_shoulder_joint() -> void:
-    # Recreate the constraint after positioning both bodies. This makes the
-    # initial local anchors unambiguous on reset and prevents a stale origin pin.
-    if is_instance_valid(shoulder_joint):
-        shoulder_joint.free()
-    shoulder_joint = PinJoint2D.new()
-    shoulder_joint.name = "ShoulderPin"
-    # Parent the joint to the pot so its local shoulder anchor follows pot motion.
-    # Configure it before entering the tree to capture the positioned bodies.
-    shoulder_joint.position = Vector2(0.30, -0.72)
-    shoulder_joint.node_a = pot.get_path()
-    shoulder_joint.node_b = hammer.get_path()
-    shoulder_joint.disable_collision = true
-    pot.add_child(shoulder_joint)
+func _rebuild_shoulder_anchor() -> void:
+    if is_instance_valid(shoulder_anchor):
+        shoulder_anchor.free()
+    shoulder_anchor = Marker2D.new()
+    shoulder_anchor.name = "ShoulderAnchor"
+    shoulder_anchor.position = Vector2(0.30, -0.72)
+    pot.add_child(shoulder_anchor)
 
+func _apply_shoulder_constraint() -> void:
+    # A stiff damped spring constrains the hammer grip to the pot shoulder.
+    # Equal and opposite forces preserve physical reaction and pot torque.
+    var shoulder := pot.global_position + Vector2(0.30, -0.72).rotated(pot.rotation)
+    var lever := shoulder - pot.global_position
+    var shoulder_velocity := pot.linear_velocity + Vector2(-lever.y, lever.x) * pot.angular_velocity
+    var grip_velocity := hammer.linear_velocity
+    var error := shoulder - hammer.global_position
+    var force := error * SHOULDER_STIFFNESS - (grip_velocity - shoulder_velocity) * SHOULDER_DAMPING
+    if force.length() > SHOULDER_MAX_FORCE:
+        force = force.normalized() * SHOULDER_MAX_FORCE
+    hammer.apply_force(force, Vector2.ZERO)
+    pot.apply_force(-force, lever)
 func set_target_world(world_point: Vector2) -> void:
     target_world = world_point
     var shoulder := pot.global_position + Vector2(0.30, -0.72).rotated(pot.rotation)
@@ -141,6 +150,8 @@ func set_target_world(world_point: Vector2) -> void:
 func _physics_process(_delta: float) -> void:
     if not initialized:
         return
+    shoulder_anchor.global_position = pot.global_position + Vector2(0.30, -0.72).rotated(pot.rotation)
+    _apply_shoulder_constraint()
     # A bounded PD torque motor turns the hammer. The pin joint transfers
     # all reaction forces to the pot; there are no contact impulses by hand.
     var error := wrapf(target_angle - hammer.rotation, -PI, PI)
