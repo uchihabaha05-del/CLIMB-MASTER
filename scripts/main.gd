@@ -1480,8 +1480,6 @@ func _advance_to_shadow_level() -> void:
     current_level = 2
     finished = false
     game_over = false
-    active_checkpoint = 0
-    checkpoint_positions.clear()
     finish_position = level_two_finish
     start_y = level_two_start.y
     player.set_silhouette_mode(true)
@@ -1495,9 +1493,8 @@ func _advance_to_shadow_level() -> void:
     get_tree().paused = false
 
 func _restart_run() -> void:
-    active_checkpoint = 0
     if current_level == 2:
-        checkpoint_label.text = "ТЕНЕВОЙ УРОВЕНЬ  •  КП 0"
+        checkpoint_label.text = "ТЕНЕВОЙ УРОВЕНЬ  •  БЕЗ КП"
     else:
         checkpoint_label.text = "СТАРТ  •  БЕЗ КП"
     _reset_player()
