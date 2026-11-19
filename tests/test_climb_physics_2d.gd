@@ -13,7 +13,7 @@ func _run() -> void:
     world.add_child(core)
     await process_frame
     core.add_static_box(Vector2(0.0, 2.0), Vector2(30.0, 0.5), 0.0, 1.0, 0.0)
-    core.add_static_box(Vector2(3.0, -0.2), Vector2(0.35, 8.0), 0.0, 0.9, 0.0)
+    var wall := core.add_static_box(Vector2(3.0, -0.2), Vector2(0.35, 8.0), 0.0, 0.9, 0.0)
     core.configure_start(Vector2(0.0, -0.1))
     await physics_frame
     var start_y := core.pot.global_position.y
@@ -44,9 +44,10 @@ func _run() -> void:
     var shoulder_alignment := core.hammer.global_position.distance_to(core.shoulder_anchor.global_position)
     _assert(shoulder_alignment < 0.12, "Hammer grip must stay aligned with the shoulder constraint")
     var hammer_contacts := core.hammer.get_contact_count()
+    var wall_contact := core.hammer.get_colliding_bodies().has(wall)
     var hammer_head := core.hammer.to_global(Vector2(0.88, -3.13))
     var head_before_wall := hammer_head.x <= 3.08
-    _assert(hammer_contacts > 0 and head_before_wall, "Hammer head must contact the wall without tunnelling")
+    _assert(wall_contact and head_before_wall, "Hammer head must contact the wall without tunnelling")
     var pot_displacement := core.pot.global_position.distance_to(pot_before)
     print("PHYSICS_DIAGNOSTIC: pot_before=", pot_before, " pot_after=", core.pot.global_position,
         " displacement=", pot_displacement, " pot_rotation=", core.pot.rotation,
