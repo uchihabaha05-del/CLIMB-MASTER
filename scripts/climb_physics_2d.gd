@@ -18,9 +18,9 @@ const POT_RADIUS := 0.72
 const HAMMER_SHAFT_LENGTH := 2.65
 const HAMMER_HEAD_RADIUS := 0.24
 const DEFAULT_TARGET_ANGLE := -0.72
-const SHOULDER_STIFFNESS := 5200.0
-const SHOULDER_DAMPING := 125.0
-const SHOULDER_MAX_FORCE := 4200.0
+const SHOULDER_STIFFNESS := 10000.0
+const SHOULDER_DAMPING := 200.0
+const SHOULDER_MAX_FORCE := 7000.0
 
 var pot: RigidBody2D
 var hammer: RigidBody2D
@@ -87,6 +87,7 @@ func _build_bodies() -> void:
     hammer.center_of_mass_mode = RigidBody2D.CENTER_OF_MASS_MODE_CUSTOM
     hammer.center_of_mass = Vector2.ZERO
     add_child(hammer)
+    hammer.add_collision_exception_with(pot)
 
     initialized = true
 
