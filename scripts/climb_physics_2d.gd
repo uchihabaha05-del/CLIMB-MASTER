@@ -81,8 +81,11 @@ func _build_bodies() -> void:
     shoulder_joint = PinJoint2D.new()
     shoulder_joint.name = "ShoulderPin"
     shoulder_joint.position = Vector2.ZERO
-    shoulder_joint.node_a = NodePath("../PotBody")
-    shoulder_joint.node_b = NodePath("../HammerBody")
+    # Resolve absolute paths after both rigid bodies are in the scene tree.
+    # Joint2D paths are relative to the joint itself; explicit absolute paths
+    # avoid accidentally resolving a sibling from the wrong parent scope.
+    shoulder_joint.node_a = pot.get_path()
+    shoulder_joint.node_b = hammer.get_path()
     shoulder_joint.disable_collision = true
     add_child(shoulder_joint)
     initialized = true
