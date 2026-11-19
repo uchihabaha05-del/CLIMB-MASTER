@@ -87,6 +87,7 @@ func _build_bodies() -> void:
     hammer.center_of_mass_mode = RigidBody2D.CENTER_OF_MASS_MODE_CUSTOM
     hammer.center_of_mass = Vector2.ZERO
     add_child(hammer)
+    hammer.add_collision_exception_with(pot)
 
     initialized = true
 
@@ -149,6 +150,7 @@ func _physics_process(_delta: float) -> void:
         return
     shoulder_anchor.global_position = pot.global_position + Vector2(0.30, -0.72).rotated(pot.rotation)
     _apply_shoulder_constraint()
+    last_contact = hammer.get_contact_count() > 0
     # The bounded PD motor turns the hammer; the shoulder spring transfers
     # equal-and-opposite contact reactions to the pot without scripted impulses.
     var error := wrapf(target_angle - hammer.rotation, -PI, PI)
