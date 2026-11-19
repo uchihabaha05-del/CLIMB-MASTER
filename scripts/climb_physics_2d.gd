@@ -120,6 +120,9 @@ func set_target_world(world_point: Vector2) -> void:
 func _physics_process(_delta: float) -> void:
     if not initialized:
         return
+    # The shoulder is a point on the moving pot, not a fixed world anchor.
+    # Keep the PinJoint attached to that point as the pot translates and rotates.
+    shoulder_joint.global_position = pot.global_position + Vector2(0.30, -0.72).rotated(pot.rotation)
     # A bounded PD torque motor turns the hammer. The pin joint transfers
     # all reaction forces to the pot; there are no contact impulses by hand.
     var error := wrapf(target_angle - hammer.rotation, -PI, PI)
