@@ -170,7 +170,73 @@ func _build_world() -> void:
             outcrop.position = Vector3(side * 5.0, 1.5 + float(level) * 3.15, -0.25)
             add_child(outcrop)
 
+    _build_mountain_backdrop()
 
+
+
+
+func _build_mountain_backdrop() -> void:
+    # A continuous rock massif fills the background behind the climbing route.
+    # It is visual scenery only, so it cannot block the player or the scythe.
+    var cliff := MeshInstance3D.new()
+    cliff.name = "ContinuousMountainMassif"
+    var cliff_mesh := BoxMesh.new()
+    cliff_mesh.size = Vector3(24.0, 38.0, 2.8)
+    cliff.mesh = cliff_mesh
+    cliff.position = Vector3(0.0, 13.0, -4.7)
+    var cliff_material := StandardMaterial3D.new()
+    cliff_material.albedo_color = Color(0.105, 0.125, 0.145)
+    cliff_material.roughness = 1.0
+    cliff_material.metallic = 0.0
+    cliff.material_override = cliff_material
+    add_child(cliff)
+
+    # Irregular rock masses break up the flat silhouette and read as one cliff face.
+    var rock_colors := [
+        Color(0.16, 0.18, 0.20), Color(0.20, 0.19, 0.17),
+        Color(0.13, 0.16, 0.19), Color(0.23, 0.20, 0.17)
+    ]
+    for row in range(11):
+        for column in range(9):
+            var rock := MeshInstance3D.new()
+            var rock_mesh := SphereMesh.new()
+            rock_mesh.radius = 1.0
+            rock_mesh.height = 1.8
+            rock.mesh = rock_mesh
+            var width := randf_range(1.7, 3.0)
+            var height := randf_range(1.8, 3.8)
+            rock.scale = Vector3(width, height, randf_range(0.55, 1.0))
+            rock.position = Vector3(
+                -10.0 + float(column) * 2.5 + randf_range(-0.45, 0.45),
+                -3.0 + float(row) * 3.2 + randf_range(-0.55, 0.55),
+                -2.95 + randf_range(-0.18, 0.18)
+            )
+            var material := StandardMaterial3D.new()
+            material.albedo_color = rock_colors[randi() % rock_colors.size()]
+            material.roughness = 0.98
+            rock.material_override = material
+            add_child(rock)
+
+    # A broad landing shelf closes the lower edge of the level.
+    # A climber who misses the first foothold lands here instead of falling forever.
+    var valley_floor := StaticBody3D.new()
+    valley_floor.name = "MountainValleyFloor"
+    valley_floor.position = Vector3(0.0, -1.82, 0.0)
+    var floor_mesh := MeshInstance3D.new()
+    var floor_box := BoxMesh.new()
+    floor_box.size = Vector3(120.0, 0.7, 80.0)
+    floor_mesh.mesh = floor_box
+    var floor_material := StandardMaterial3D.new()
+    floor_material.albedo_color = Color(0.20, 0.22, 0.23)
+    floor_material.roughness = 1.0
+    floor_mesh.material_override = floor_material
+    valley_floor.add_child(floor_mesh)
+    var floor_collision := CollisionShape3D.new()
+    var floor_shape := BoxShape3D.new()
+    floor_shape.size = floor_box.size
+    floor_collision.shape = floor_shape
+    valley_floor.add_child(floor_collision)
+    add_child(valley_floor)
 
 func _build_photogrammetry_boulders() -> void:
     # Real photogrammetry scan; convex collision keeps the mobile physics cost manageable.
