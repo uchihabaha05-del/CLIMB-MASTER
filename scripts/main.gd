@@ -176,67 +176,97 @@ func _build_world() -> void:
 
 
 func _build_mountain_backdrop() -> void:
-    # A continuous rock massif fills the background behind the climbing route.
-    # It is visual scenery only, so it cannot block the player or the scythe.
+    # One continuous, triangulated cliff face replaces the old tiled sphere backdrop.
+    # Vertex displacement and color variation create broad natural rock strata.
+    var surface := SurfaceTool.new()
+    surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+    var columns := 48
+    var rows := 68
+    var width := 30.0
+    var height := 42.0
+    var vertices: Array[Vector3] = []
+    var colors: Array[Color] = []
+    for row in range(rows + 1):
+        var v := float(row) / float(rows)
+        var y := -4.0 + v * height
+        for column in range(columns + 1):
+            var u := float(column) / float(columns)
+            var x := -width * 0.5 + u * width
+            var broad_ridge := sin(x * 0.42 + y * 0.16) * 0.72
+            var broken_ridge := sin(x * 1.13 - y * 0.31) * 0.24
+            var strata := sin(y * 1.65 + x * 0.22) * 0.12
+            var z := -4.65 + broad_ridge + broken_ridge + strata
+            vertices.append(Vector3(x, y, z))
+            var shade := 0.15 + 0.035 * sin(x * 0.8 + y * 0.37) + 0.025 * cos(y * 1.4 - x * 0.3)
+            colors.append(Color(shade * 0.92, shade, shade * 1.08, 1.0))
+
+    for row in range(rows):
+        for column in range(columns):
+            var i := row * (columns + 1) + column
+            var a := vertices[i]
+            var b := vertices[i + 1]
+            var c := vertices[i + columns + 1]
+            var d := vertices[i + columns + 2]
+            surface.set_color(colors[i])
+            surface.add_vertex(a)
+            surface.set_color(colors[i + 1])
+            surface.add_vertex(b)
+            surface.set_color(colors[i + columns + 1])
+            surface.add_vertex(c)
+            surface.set_color(colors[i + 1])
+            surface.add_vertex(b)
+            surface.set_color(colors[i + columns + 2])
+            surface.add_vertex(d)
+            surface.set_color(colors[i + columns + 1])
+            surface.add_vertex(c)
+
+    surface.generate_normals()
     var cliff := MeshInstance3D.new()
     cliff.name = "ContinuousMountainMassif"
-    var cliff_mesh := BoxMesh.new()
-    cliff_mesh.size = Vector3(24.0, 38.0, 2.8)
-    cliff.mesh = cliff_mesh
-    cliff.position = Vector3(0.0, 13.0, -4.7)
+    cliff.mesh = surface.commit()
     var cliff_material := StandardMaterial3D.new()
-    cliff_material.albedo_color = Color(0.105, 0.125, 0.145)
+    cliff_material.vertex_color_use_as_albedo = true
     cliff_material.roughness = 1.0
     cliff_material.metallic = 0.0
     cliff.material_override = cliff_material
     add_child(cliff)
 
-    # Irregular rock masses break up the flat silhouette and read as one cliff face.
-    var rock_colors := [
-        Color(0.16, 0.18, 0.20), Color(0.20, 0.19, 0.17),
-        Color(0.13, 0.16, 0.19), Color(0.23, 0.20, 0.17)
-    ]
-    for row in range(11):
-        for column in range(9):
-            var rock := MeshInstance3D.new()
-            var rock_mesh := SphereMesh.new()
-            rock_mesh.radius = 1.0
-            rock_mesh.height = 1.8
-            rock.mesh = rock_mesh
-            var width := randf_range(1.7, 3.0)
-            var height := randf_range(1.8, 3.8)
-            rock.scale = Vector3(width, height, randf_range(0.55, 1.0))
-            rock.position = Vector3(
-                -10.0 + float(column) * 2.5 + randf_range(-0.45, 0.45),
-                -3.0 + float(row) * 3.2 + randf_range(-0.55, 0.55),
-                -2.95 + randf_range(-0.18, 0.18)
-            )
-            var material := StandardMaterial3D.new()
-            material.albedo_color = rock_colors[randi() % rock_colors.size()]
-            material.roughness = 0.98
-            rock.material_override = material
-            add_child(rock)
+    # Distant side ridges frame the playable lane without hiding the footholds.
+    var ridge_material := StandardMaterial3D.new()
+    ridge_material.albedo_color = Color(0.12, 0.145, 0.17)
+    ridge_material.roughness = 1.0
+    for side in [-1.0, 1.0]:
+        for tier in range(5):
+            var ridge := MeshInstance3D.new()
+            var ridge_mesh := SphereMesh.new()
+            ridge_mesh.radius = 1.0
+            ridge_mesh.height = 2.0
+            ridge.mesh = ridge_mesh
+            ridge.scale = Vector3(2.4 + float(tier % 2) * 0.7, 3.0, 1.15)
+            ridge.position = Vector3(side * (9.0 + float(tier % 2) * 1.2), 1.0 + float(tier) * 7.2, -3.65)
+            ridge.material_override = ridge_material
+            add_child(ridge)
 
-    # A broad landing shelf closes the lower edge of the level.
-    # A climber who misses the first foothold lands here instead of falling forever.
+    # Broad, solid valley floor: the player can land safely below the first ledge.
     var valley_floor := StaticBody3D.new()
     valley_floor.name = "MountainValleyFloor"
     valley_floor.position = Vector3(0.0, -1.82, 0.0)
-    var floor_mesh := MeshInstance3D.new()
+    var floor_visual := MeshInstance3D.new()
     var floor_box := BoxMesh.new()
     floor_box.size = Vector3(120.0, 0.7, 80.0)
-    floor_mesh.mesh = floor_box
+    floor_visual.mesh = floor_box
     var floor_material := StandardMaterial3D.new()
     floor_material.albedo_color = Color(0.20, 0.22, 0.23)
     floor_material.roughness = 1.0
-    floor_mesh.material_override = floor_material
-    valley_floor.add_child(floor_mesh)
+    floor_visual.material_override = floor_material
+    valley_floor.add_child(floor_visual)
     var floor_collision := CollisionShape3D.new()
     var floor_shape := BoxShape3D.new()
     floor_shape.size = floor_box.size
     floor_collision.shape = floor_shape
     valley_floor.add_child(floor_collision)
     add_child(valley_floor)
+
 
 func _build_photogrammetry_boulders() -> void:
     # Real photogrammetry scan; convex collision keeps the mobile physics cost manageable.
