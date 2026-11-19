@@ -181,6 +181,21 @@ func add_static_circle(center: Vector2, radius: float, friction: float = 0.85) -
 
     return body
 
+func add_static_capsule(center: Vector2, radius: float, height: float, rotation: float = 0.0,
+        friction: float = 0.85) -> StaticBody2D:
+    var body := StaticBody2D.new()
+    body.position = center
+    body.rotation = rotation
+    body.physics_material_override = _material(friction, 0.0)
+    var shape := CollisionShape2D.new()
+    var capsule := CapsuleShape2D.new()
+    capsule.radius = radius
+    capsule.height = maxf(height, radius * 2.0)
+    shape.shape = capsule
+    body.add_child(shape)
+    add_child(body)
+    return body
+
 func sync_visible_position() -> Vector2:
     return pot.global_position
 
