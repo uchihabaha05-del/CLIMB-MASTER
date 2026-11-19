@@ -1164,7 +1164,7 @@ func _build_hud() -> void:
     _build_win_overlay(hud)
     _add_language_selector(pause_content)
     # Touches that start on these controls must not swing the scythe.
-    player.ui_blockers = [pause_button, reset_button, restart_button, win_overlay]
+    player.ui_blockers = [pause_button, reset_button, restart_button, win_overlay, pause_overlay]
 
 
 
@@ -1344,6 +1344,8 @@ func _build_start_flow() -> void:
     _style_hud_button(go, Color(0.58, 0.34, 0.08, 1.0))
     go.pressed.connect(_start_game)
     content.add_child(go)
+    # The full-screen start menu must never initiate a climbing gesture.
+    player.ui_blockers.append(start_overlay)
 
 func _play_intro() -> void:
     await get_tree().create_timer(2.4, true, false, true).timeout
