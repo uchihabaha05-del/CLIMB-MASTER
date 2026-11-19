@@ -57,6 +57,20 @@ func _run() -> void:
     var reaction_ok := pot_displacement > 0.025 or absf(core.pot.rotation) > 0.025
     _assert(reaction_ok, "Hammer contact must transfer motion through the shoulder joint")
 
+    # Surface materials and reset must remain deterministic after a fall.
+    var ice := core.add_static_box(Vector2(-5.0, 0.0), Vector2(1.0, 1.0), 0.0, 0.035)
+    var rock := core.add_static_box(Vector2(-7.0, 0.0), Vector2(1.0, 1.0), 0.0, 1.18)
+    _assert(ice.physics_material_override.friction < rock.physics_material_override.friction,
+        "Ice must be more slippery than rock")
+    core.pot.linear_velocity = Vector2(4.0, 2.0)
+    core.reset_to(Vector2(-2.0, -1.0))
+    await physics_frame
+    var reset_position_ok := core.pot.global_position.distance_to(Vector2(-2.0, -1.0)) < 0.08
+    var reset_hammer_ok := core.hammer.global_position.distance_to(core.pot.global_position + Vector2(0.30, -0.72)) < 0.08
+    var reset_velocity_ok := core.pot.linear_velocity.length() < 0.05
+    _assert(reset_position_ok and reset_hammer_ok and reset_velocity_ok,
+        "Reset must restore pot, hammer anchor and velocity")
+
     print("CLIMB_PHYSICS_2D_TESTS: ", "PASS" if _failures == 0 else "FAIL")
     quit(0 if _failures == 0 else 1)
 
