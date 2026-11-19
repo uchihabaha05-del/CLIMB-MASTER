@@ -1257,6 +1257,7 @@ func _build_start_flow() -> void:
     intro_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
     intro_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
     hud.add_child(intro_overlay)
+    player.ui_blockers.append(intro_overlay)
     var dark := ColorRect.new()
     dark.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     dark.color = Color(0.012, 0.018, 0.03, 1.0)
