@@ -35,7 +35,7 @@ func _run() -> void:
     # the hammer must push the freely suspended pot when its head hits the wall.
     core.pot.gravity_scale = 0.0
     core.hammer.gravity_scale = 0.0
-    core.pot.mass = 50.0
+    core.pot.mass = ClimbPhysics2D.POT_MASS
     core.configure_start(Vector2(0.0, 0.0))
     await physics_frame
     var pot_before := core.pot.global_position
