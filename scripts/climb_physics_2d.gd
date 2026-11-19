@@ -115,11 +115,12 @@ func _rebuild_shoulder_joint() -> void:
         shoulder_joint.free()
     shoulder_joint = PinJoint2D.new()
     shoulder_joint.name = "ShoulderPin"
-    # Keep the joint in the pot's local frame so its anchor follows the pot.
-    pot.add_child(shoulder_joint)
-    shoulder_joint.position = Vector2(0.30, -0.72)
-    shoulder_joint.node_a = NodePath("..")
-    shoulder_joint.node_b = NodePath("../../HammerBody")
+    # Keep the joint as a sibling of both rigid bodies. Its world-space anchor
+    # follows the pot shoulder, avoiding inherited body transforms on the joint.
+    add_child(shoulder_joint)
+    shoulder_joint.global_position = pot.global_position + Vector2(0.30, -0.72).rotated(pot.rotation)
+    shoulder_joint.node_a = pot.get_path()
+    shoulder_joint.node_b = hammer.get_path()
     shoulder_joint.disable_collision = true
 
 func set_target_world(world_point: Vector2) -> void:
@@ -134,6 +135,7 @@ func set_target_world(world_point: Vector2) -> void:
 func _physics_process(_delta: float) -> void:
     if not initialized:
         return
+    shoulder_joint.global_position = pot.global_position + Vector2(0.30, -0.72).rotated(pot.rotation)
     # A bounded PD torque motor turns the hammer. The pin joint transfers
     # all reaction forces to the pot; there are no contact impulses by hand.
     var error := wrapf(target_angle - hammer.rotation, -PI, PI)
