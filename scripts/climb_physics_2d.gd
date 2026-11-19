@@ -105,6 +105,9 @@ func configure_start(world_position: Vector2, rotation: float = 0.0) -> void:
     hammer.rotation = target_angle
     hammer.linear_velocity = Vector2.ZERO
     hammer.angular_velocity = 0.0
+    # Flush both teleports to the physics server before the joint captures its anchors.
+    pot.force_update_transform()
+    hammer.force_update_transform()
     _rebuild_shoulder_joint()
     target_world = hammer.global_position + Vector2.UP.rotated(target_angle) * ARM_REACH
 
