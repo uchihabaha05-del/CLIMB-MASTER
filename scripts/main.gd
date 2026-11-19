@@ -189,6 +189,7 @@ func _build_climbable_rock_holds() -> void:
         var tier := float(i)
         var hold := StaticBody3D.new()
         hold.name = "ClimbableRockHold_%02d" % i
+        hold.add_to_group("climbable_hold")
         hold.position = Vector3(side * (2.55 + float(i % 3) * 0.22), 1.15 + tier * 1.12, -0.18)
         hold.collision_layer = 1
         hold.collision_mask = 1
