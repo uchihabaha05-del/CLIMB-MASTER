@@ -60,10 +60,10 @@ var level_two_finish := Vector3(-1.35, 49.58, 0.0)
 const LANGS := ["ru", "en", "es", "fr"]
 const LANG_NAMES := ["Русский", "English", "Español", "Français"]
 const T := {
-"ru":{"height":"ВЫСОТА","record":"РЕКОРД  %d м","checkpoint":"СТАРТ  •  КП 0","checkpoint_n":"КОНТРОЛЬНАЯ ТОЧКА  •  %d","touch":"КАСАЙСЯ ЭКРАНА И ВЕДИ СЕРП  •  ЦЕПЛЯЙСЯ ЗА КРАЯ","reset":"СБРОС","pause":"Пауза","resume":"ПРОДОЛЖИТЬ ПОДЪЁМ","to_cp":"К КОНТРОЛЬНОЙ ТОЧКЕ","pause_title":"ПЕРЕДЫШКА","pause_sub":"Подумай над следующим движением","restart":"ВЕРНУТЬСЯ К КОНТРОЛЬНОЙ ТОЧКЕ","again":"НАЧАТЬ ЗАНОВО","stay":"ОСТАТЬСЯ НА ВЕРШИНЕ","continue":"ПРОДОЛЖИТЬ","language":"ЯЗЫК","welcome":"ПОКОРИ СВОЮ ВЕРШИНУ","hint":"Коснись экрана и веди серп к камню.","push":"Упёрся. Веди палец, чтобы оттолкнуться.","grip":"Есть упор! Веди серп дальше, чтобы подняться.","hazard":"Опасное препятствие! Обойди его серпом.","fall":"Падение! Нажми СБРОС, чтобы вернуться к контрольной точке.","win":"ВЕРШИНА!\nРекорд: %d м"},
-"en":{"height":"HEIGHT","record":"BEST  %d m","checkpoint":"START  •  CP 0","checkpoint_n":"CHECKPOINT  •  %d","touch":"DRAG THE SCYTHE  •  HOOK ONTO EDGES","reset":"RESET","pause":"Pause","resume":"CONTINUE CLIMBING","to_cp":"TO CHECKPOINT","pause_title":"TAKE A BREATHER","pause_sub":"Plan your next move","restart":"RETURN TO CHECKPOINT","again":"PLAY AGAIN","stay":"STAY AT THE SUMMIT","continue":"CONTINUE","language":"LANGUAGE","welcome":"CONQUER YOUR SUMMIT","hint":"Touch the screen and guide the scythe to a rock.","push":"Blocked. Keep dragging to push away.","grip":"Hooked! Keep moving the scythe to climb.","hazard":"Dangerous obstacle! Swing around it.","fall":"You fell! Press RESET to return to the checkpoint.","win":"SUMMIT REACHED!\nBest: %d m"},
-"es":{"height":"ALTURA","record":"RÉCORD  %d m","checkpoint":"INICIO  •  CP 0","checkpoint_n":"PUNTO DE CONTROL  •  %d","touch":"DESLIZA LA HOZ  •  ENGÁNCHATE A LOS BORDES","reset":"REINICIAR","pause":"Pausa","resume":"CONTINUAR ESCALANDO","to_cp":"IR AL PUNTO DE CONTROL","pause_title":"TOMA UN RESPIRO","pause_sub":"Piensa en tu siguiente movimiento","restart":"VOLVER AL PUNTO DE CONTROL","again":"JUGAR DE NUEVO","stay":"QUEDARSE EN LA CIMA","continue":"CONTINUAR","language":"IDIOMA","welcome":"CONQUISTA LA CIMA","hint":"Toca la pantalla y guía la hoz hacia una roca.","push":"Bloqueado. Sigue deslizando para impulsarte.","grip":"¡Enganchado! Sigue moviendo la hoz para subir.","hazard":"¡Obstáculo peligroso! Rodéalo con la hoz.","fall":"¡Has caído! Pulsa REINICIAR para volver al punto de control.","win":"¡HAS LLEGADO A LA CIMA!\nRécord: %d m"},
-"fr":{"height":"HAUTEUR","record":"RECORD  %d m","checkpoint":"DÉPART  •  CP 0","checkpoint_n":"POINT DE CONTRÔLE  •  %d","touch":"FAIS GLISSER LA FAUCILLE  •  ACCROCHE-TOI AUX REBORDS","reset":"RÉINITIALISER","pause":"Pause","resume":"CONTINUER L’ASCENSION","to_cp":"RETOUR AU POINT DE CONTRÔLE","pause_title":"PETITE PAUSE","pause_sub":"Prépare ton prochain mouvement","restart":"RETOURNER AU POINT DE CONTRÔLE","again":"REJOUER","stay":"RESTER AU SOMMET","continue":"CONTINUER","language":"LANGUE","welcome":"CONQUIERS TON SOMMET","hint":"Touche l’écran et guide la faucille vers un rocher.","push":"Bloqué. Continue à glisser pour te repousser.","grip":"Accroché ! Continue à bouger la faucille pour grimper.","hazard":"Obstacle dangereux ! Contourne-le avec la faucille.","fall":"Chute ! Appuie sur RÉINITIALISER pour revenir au point de contrôle.","win":"SOMMET ATTEINT !\nRecord : %d m"}
+"ru":{"height":"ВЫСОТА","record":"РЕКОРД  %d м","checkpoint":"СТАРТ  •  БЕЗ КП","checkpoint_n":"КОНТРОЛЬНАЯ ТОЧКА  •  %d","touch":"КАСАЙСЯ ЭКРАНА И ВЕДИ СЕРП  •  ЦЕПЛЯЙСЯ ЗА КРАЯ","reset":"СБРОС","pause":"Пауза","resume":"ПРОДОЛЖИТЬ ПОДЪЁМ","to_cp":"К НАЧАЛУ","pause_title":"ПЕРЕДЫШКА","pause_sub":"Подумай над следующим движением","restart":"НАЧАТЬ ЗАНОВО","again":"НАЧАТЬ ЗАНОВО","stay":"ОСТАТЬСЯ НА ВЕРШИНЕ","continue":"ПРОДОЛЖИТЬ","language":"ЯЗЫК","welcome":"ПОКОРИ СВОЮ ВЕРШИНУ","hint":"Коснись экрана и веди серп к камню.","push":"Упёрся. Веди палец, чтобы оттолкнуться.","grip":"Есть упор! Веди серп дальше, чтобы подняться.","hazard":"Опасное препятствие! Обойди его серпом.","fall":"Падение! Возвращаемся на старт.","win":"ВЕРШИНА!\nРекорд: %d м"},
+"en":{"height":"HEIGHT","record":"BEST  %d m","checkpoint":"START  •  NO CHECKPOINTS","checkpoint_n":"CHECKPOINT  •  %d","touch":"DRAG THE SCYTHE  •  HOOK ONTO EDGES","reset":"RESET","pause":"Pause","resume":"CONTINUE CLIMBING","to_cp":"BACK TO START","pause_title":"TAKE A BREATHER","pause_sub":"Plan your next move","restart":"RESTART RUN","again":"PLAY AGAIN","stay":"STAY AT THE SUMMIT","continue":"CONTINUE","language":"LANGUAGE","welcome":"CONQUER YOUR SUMMIT","hint":"Touch the screen and guide the scythe to a rock.","push":"Blocked. Keep dragging to push away.","grip":"Hooked! Keep moving the scythe to climb.","hazard":"Dangerous obstacle! Swing around it.","fall":"You fell! Returning to the start.","win":"SUMMIT REACHED!\nBest: %d m"},
+"es":{"height":"ALTURA","record":"RÉCORD  %d m","checkpoint":"INICIO  •  SIN PUNTOS","checkpoint_n":"PUNTO DE CONTROL  •  %d","touch":"DESLIZA LA HOZ  •  ENGÁNCHATE A LOS BORDES","reset":"REINICIAR","pause":"Pausa","resume":"CONTINUAR ESCALANDO","to_cp":"VOLVER AL INICIO","pause_title":"TOMA UN RESPIRO","pause_sub":"Piensa en tu siguiente movimiento","restart":"REINICIAR PARTIDA","again":"JUGAR DE NUEVO","stay":"QUEDARSE EN LA CIMA","continue":"CONTINUAR","language":"IDIOMA","welcome":"CONQUISTA LA CIMA","hint":"Toca la pantalla y guía la hoz hacia una roca.","push":"Bloqueado. Sigue deslizando para impulsarte.","grip":"¡Enganchado! Sigue moviendo la hoz para subir.","hazard":"¡Obstáculo peligroso! Rodéalo con la hoz.","fall":"¡Has caído! Volvemos al inicio.","win":"¡HAS LLEGADO A LA CIMA!\nRécord: %d m"},
+"fr":{"height":"HAUTEUR","record":"RECORD  %d m","checkpoint":"DÉPART  •  SANS POINT DE CONTRÔLE","checkpoint_n":"POINT DE CONTRÔLE  •  %d","touch":"FAIS GLISSER LA FAUCILLE  •  ACCROCHE-TOI AUX REBORDS","reset":"RÉINITIALISER","pause":"Pause","resume":"CONTINUER L’ASCENSION","to_cp":"RETOUR AU DÉPART","pause_title":"PETITE PAUSE","pause_sub":"Prépare ton prochain mouvement","restart":"RECOMMENCER","again":"REJOUER","stay":"RESTER AU SOMMET","continue":"CONTINUER","language":"LANGUE","welcome":"CONQUIERS TON SOMMET","hint":"Touche l’écran et guide la faucille vers un rocher.","push":"Bloqué. Continue à glisser pour te repousser.","grip":"Accroché ! Continue à bouger la faucille pour grimper.","hazard":"Obstacle dangereux ! Contourne-le avec la faucille.","fall":"Chute ! Retour au départ.","win":"SOMMET ATTEINT !\nRecord : %d m"}
 }
 
 func _ready() -> void:
@@ -1052,7 +1052,7 @@ func _build_hud() -> void:
 
     reset_button = Button.new()
     reset_button.text = _t("reset")
-    reset_button.tooltip_text = "Вернуться к контрольной точке"
+    reset_button.tooltip_text = _t("to_cp")
     reset_button.custom_minimum_size = Vector2(96, 58)
     reset_button.add_theme_font_size_override("font_size", 15)
     _style_hud_button(reset_button, Color(0.20, 0.11, 0.09, 0.96))
@@ -1465,7 +1465,7 @@ func _reset_player() -> void:
 
 func _fall_back_to_start() -> void:
     # Falling below the playable area returns the climber to the actual start platform.
-    # Checkpoints remain available for manual reset, but a fall always restarts at the beginning.
+    # Checkpoints are disabled: every fall returns to the level start.
     player.release_pointer()
     player.velocity = Vector3.ZERO
     player.global_position = Vector3(0.0, 1.0, 0.0) if current_level == 1 else level_two_start
@@ -1474,7 +1474,7 @@ func _fall_back_to_start() -> void:
     game_over = false
     finished = false
     restart_button.visible = false
-    checkpoint_label.text = "ТЕНЕВОЙ УРОВЕНЬ" if current_level == 2 else _t("checkpoint")
+    checkpoint_label.text = "ТЕНЕВОЙ УРОВЕНЬ  •  БЕЗ КП" if current_level == 2 else _t("checkpoint")
     status_label.text = "ТЕНЬ НАЧИНАЕТСЯ. ЦЕПЛЯЙСЯ ЗА ЧЁРНЫЕ ВЫСТУПЫ." if current_level == 2 else _t("touch")
 
 func _on_win_primary_action() -> void:
@@ -1497,7 +1497,7 @@ func _advance_to_shadow_level() -> void:
     player.reset_hammer()
     win_overlay.visible = false
     restart_button.visible = false
-    checkpoint_label.text = "ТЕНЕВОЙ УРОВЕНЬ  •  КП 0"
+    checkpoint_label.text = "ТЕНЕВОЙ УРОВЕНЬ  •  БЕЗ КП"
     status_label.text = "ТЕНЬ НАЧИНАЕТСЯ. ЦЕПЛЯЙСЯ ЗА ЧЁРНЫЕ ВЫСТУПЫ."
     get_tree().paused = false
 
@@ -1506,7 +1506,7 @@ func _restart_run() -> void:
     if current_level == 2:
         checkpoint_label.text = "ТЕНЕВОЙ УРОВЕНЬ  •  КП 0"
     else:
-        checkpoint_label.text = "СТАРТ  •  КП 0"
+        checkpoint_label.text = "СТАРТ  •  БЕЗ КП"
     _reset_player()
 
 func _check_finish() -> void:
