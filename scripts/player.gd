@@ -704,6 +704,7 @@ func _physics_process(delta: float) -> void:
         return
     var pot_position := physics_world.sync_visible_position()
     global_position = Vector3(pot_position.x, -pot_position.y, PLAY_PLANE_Z)
-    aim_angle = wrapf(physics_world.hammer.rotation - PI * 0.5, -PI, PI)
+    aim_angle = wrapf(-physics_world.hammer.rotation, -PI, PI)
+    rotation.z = -physics_world.pot.rotation
     _update_pivot()
     _update_arms()
