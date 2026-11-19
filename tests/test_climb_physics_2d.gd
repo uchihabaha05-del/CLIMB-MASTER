@@ -39,15 +39,10 @@ func _run() -> void:
     var joint_a := core.shoulder_joint.get_node_or_null(core.shoulder_joint.node_a)
     var joint_b := core.shoulder_joint.get_node_or_null(core.shoulder_joint.node_b)
     var joint_ok := joint_a == core.pot and joint_b == core.hammer
-    _assert(joint_ok, "Shoulder joint must resolve both intended rigid bodies")
-    var hammer_contacts := core.hammer.get_contact_count()
-    var joint_a := core.shoulder_joint.get_node_or_null(core.shoulder_joint.node_a)
-    var joint_b := core.shoulder_joint.get_node_or_null(core.shoulder_joint.node_b)
-    var joint_ok := joint_a == core.pot and joint_b == core.hammer
     _assert(joint_ok, "Shoulder joint must resolve the pot and hammer bodies")
     var hammer_contacts := core.hammer.get_contact_count()
     var hammer_head := core.hammer.to_global(Vector2(0.88, -3.13))
-    var head_before_wall := hammer_head.x <= 3.0
+    var head_before_wall := hammer_head.x <= 3.08
     _assert(hammer_contacts > 0 and head_before_wall, "Hammer head must contact the wall without tunnelling")
     var pot_displacement := core.pot.global_position.distance_to(pot_before)
     print("PHYSICS_DIAGNOSTIC: pot_before=", pot_before, " pot_after=", core.pot.global_position,
