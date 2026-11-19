@@ -61,10 +61,12 @@ var _scythe_query := PhysicsShapeQueryParameters3D.new()
 var _time := 0.0
 var _arm_r: Dictionary = {}
 var _arm_l: Dictionary = {}
+var physics_viewport: SubViewport
+var physics_world: ClimbPhysics2D
 
 func _ready() -> void:
     global_position.z = PLAY_PLANE_Z
-    _make_player_collision()
+    # The visual rig no longer owns a CharacterBody3D collider; 2D rigid bodies drive it.
     scythe_probe.radius = 0.16
     _scythe_query.shape = scythe_probe
     _scythe_query.collide_with_bodies = true
@@ -77,12 +79,83 @@ func _ready() -> void:
         _make_fallback_human()
 
     _make_scythe()
+    call_deferred("_initialize_2d_physics")
     reset_hammer()
 
 
 # ---------------------------------------------------------------------------
 # Character art + rigged arms
 # ---------------------------------------------------------------------------
+
+func _initialize_2d_physics() -> void:
+    physics_viewport = SubViewport.new()
+    physics_viewport.name = "Physics2DViewport"
+    physics_viewport.size = Vector2i(1280, 720)
+    physics_viewport.disable_3d = true
+    physics_viewport.transparent_bg = true
+    physics_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+    physics_viewport.world_2d = World2D.new()
+    add_child(physics_viewport)
+
+    physics_world = ClimbPhysics2D.new()
+    physics_world.name = "ClimbPhysics2D"
+    physics_viewport.add_child(physics_world)
+    await get_tree().physics_frame
+    _mirror_static_3d_colliders()
+    physics_world.configure_start(Vector2(global_position.x, -global_position.y))
+    physics_world.set_target_world(physics_world.pot.global_position + Vector2(0.5, -2.0))
+
+func _mirror_static_3d_colliders() -> void:
+    var scene_root := get_tree().current_scene
+    if scene_root == null or physics_world == null:
+        return
+    var shapes := scene_root.find_children("*", "CollisionShape3D", true, false)
+    for item in shapes:
+        var source := item as CollisionShape3D
+        if source == null or source.disabled or source.shape == null:
+            continue
+        var owner := source.get_parent()
+        if not owner is StaticBody3D:
+            continue
+        var center := Vector2(source.global_position.x, -source.global_position.y)
+        var rotation_2d := -source.global_rotation.z
+        var scale_3d := source.global_transform.basis.get_scale()
+        var friction := 0.85
+        var source_body := owner as StaticBody3D
+        if source_body.physics_material_override != null:
+            friction = source_body.physics_material_override.friction
+        var shape := source.shape
+        if shape is BoxShape3D:
+            var box := shape as BoxShape3D
+            physics_world.add_static_box(center, Vector2(box.size.x * absf(scale_3d.x), box.size.y * absf(scale_3d.y)), rotation_2d, friction)
+        elif shape is SphereShape3D:
+            var sphere := shape as SphereShape3D
+            physics_world.add_static_circle(center, sphere.radius * maxf(absf(scale_3d.x), absf(scale_3d.y)), friction)
+        elif shape is CylinderShape3D:
+            var cylinder := shape as CylinderShape3D
+            physics_world.add_static_circle(center, cylinder.radius * maxf(absf(scale_3d.x), absf(scale_3d.y)), friction)
+        elif shape is CapsuleShape3D:
+            var capsule_3d := shape as CapsuleShape3D
+            var capsule_2d := CapsuleShape2D.new()
+            capsule_2d.radius = capsule_3d.radius * absf(scale_3d.x)
+            capsule_2d.height = capsule_3d.height * absf(scale_3d.y)
+            var body := StaticBody2D.new()
+            body.position = center
+            body.rotation = rotation_2d
+            var collision := CollisionShape2D.new()
+            collision.shape = capsule_2d
+            body.add_child(collision)
+            physics_world.add_child(body)
+        elif shape is ConvexPolygonShape3D:
+            var convex := shape as ConvexPolygonShape3D
+            var points := PackedVector2Array()
+            for point in convex.points:
+                points.append(Vector2(point.x * absf(scale_3d.x), -point.y * absf(scale_3d.y)))
+            if points.size() >= 3:
+                var body := physics_world.add_static_polygon(points, friction)
+                body.position = center
+                body.rotation = rotation_2d
+
 func _make_part(file: String, origin_px: Vector2, z: float) -> Sprite3D:
     var tex := load(PART_DIR + file) as Texture2D
     if tex == null:
@@ -210,13 +283,8 @@ func _make_fallback_pot() -> void:
         add_child(handle)
 
 func _make_player_collision() -> void:
-    var body_shape := CollisionShape3D.new()
-    var shape := CylinderShape3D.new()
-    shape.radius = 0.72
-    shape.height = 0.9
-    body_shape.shape = shape
-    body_shape.position.y = 0.15
-    add_child(body_shape)
+    # Collision is owned by ClimbPhysics2D.RigidBody2D.
+    pass
 
 func _make_fallback_human() -> void:
     var skin := StandardMaterial3D.new()
@@ -571,6 +639,8 @@ func reset_hammer() -> void:
     scythe_contact_collider = null
     is_gripping_hold = false
     hook_feedback = IDLE_HINT
+    if is_instance_valid(physics_world):
+        physics_world.reset_to(Vector2(global_position.x, -global_position.y))
     _update_pivot()
     _update_arms()
 
@@ -618,6 +688,10 @@ func _aim_from_pointer(screen_position: Vector2) -> void:
     if v.length_squared() < 16.0:
         return
     target_angle = wrapf(atan2(-v.y, v.x) - PI * 0.5, -PI, PI)
+    if is_instance_valid(physics_world) and is_instance_valid(physics_world.pot):
+        var shoulder_2d := physics_world.pot.global_position + Vector2(0.30, -0.72).rotated(physics_world.pot.rotation)
+        var direction_2d := Vector2(v.x, v.y).normalized()
+        physics_world.set_target_world(shoulder_2d + direction_2d * ClimbPhysics2D.ARM_REACH)
 
 
 # ---------------------------------------------------------------------------
@@ -625,34 +699,11 @@ func _aim_from_pointer(screen_position: Vector2) -> void:
 # ---------------------------------------------------------------------------
 func _physics_process(delta: float) -> void:
     _time += delta
-    if not is_on_floor():
-        velocity.y -= GRAVITY * delta
-
-    _update_scythe(delta)
-    if is_on_floor():
-        velocity.x = move_toward(velocity.x, 0.0, FLOOR_FRICTION * delta)
-    else:
-        velocity.x = move_toward(velocity.x, 0.0, AIR_DRAG * delta)
-    velocity.x = clampf(velocity.x, -MAX_HORIZONTAL_SPEED, MAX_HORIZONTAL_SPEED)
-    velocity.y = clampf(velocity.y, -MAX_FALL_SPEED, MAX_RISE_SPEED)
-    velocity.z = 0.0
-    move_and_slide()
-    if hold_anchor_active:
-        _apply_hold_rope_constraint()
-    velocity.z = 0.0
-    global_position.z = PLAY_PLANE_Z
-
-    hazard_cooldown = maxf(0.0, hazard_cooldown - delta)
-    if hazard_cooldown <= 0.0:
-        for collision_index in range(get_slide_collision_count()):
-            var collision := get_slide_collision(collision_index)
-            var collider := collision.get_collider()
-            if collider is Node and (collider as Node).is_in_group("climb_hazard"):
-                var n := collision.get_normal()
-                n.z = 0.0
-                velocity += n.normalized() * HAZARD_KNOCKBACK + Vector3.UP * 2.0
-                hazard_cooldown = HAZARD_COOLDOWN
-                hook_feedback = "Опасное препятствие! Обойди его серпом."
-                break
-
+    if not is_instance_valid(physics_world) or not is_instance_valid(physics_world.pot):
+        _update_arms()
+        return
+    var pot_position := physics_world.sync_visible_position()
+    global_position = Vector3(pot_position.x, -pot_position.y, PLAY_PLANE_Z)
+    aim_angle = wrapf(physics_world.hammer.rotation - PI * 0.5, -PI, PI)
+    _update_pivot()
     _update_arms()
