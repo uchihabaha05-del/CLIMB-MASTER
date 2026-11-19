@@ -21,6 +21,7 @@ func _run() -> void:
         await physics_frame
     var floor_ok := core.pot.global_position.y > 0.8 and core.pot.global_position.y < 2.0
     _assert(floor_ok, "Pot must settle on the floor, not tunnel through it")
+    _assert(not core.last_contact, "Hammer-to-pot contact must not be reported as a world hook")
 
     # A fixed target does not inject upward velocity into the pot.
     core.set_target_world(Vector2(0.8, -2.0))
@@ -48,6 +49,7 @@ func _run() -> void:
     var hammer_head := core.hammer.to_global(Vector2(0.88, -3.13))
     var head_before_wall := hammer_head.x <= 3.08
     _assert(wall_contact and head_before_wall, "Hammer head must contact the wall without tunnelling")
+    _assert(core.last_contact, "World contact must be exposed to the climbing HUD")
     var pot_displacement := core.pot.global_position.distance_to(pot_before)
     print("PHYSICS_DIAGNOSTIC: pot_before=", pot_before, " pot_after=", core.pot.global_position,
         " displacement=", pot_displacement, " pot_rotation=", core.pot.rotation,
