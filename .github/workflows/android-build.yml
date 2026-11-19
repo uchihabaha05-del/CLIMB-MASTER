@@ -63,6 +63,12 @@ jobs:
             exit 1
           fi
 
+      - name: Run 2D physics headless tests
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . --script res://tests/test_climb_physics_2d.gd 2>&1 | tee /tmp/climb-physics-tests.log
+
       - name: Diagnose Android export configuration
         shell: bash
         run: |
