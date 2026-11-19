@@ -46,7 +46,7 @@ func _run() -> void:
     _assert(shoulder_alignment < 0.12, "Hammer grip must stay aligned with the shoulder constraint")
     var hammer_contacts := core.hammer.get_contact_count()
     var wall_contact := core.hammer.get_colliding_bodies().has(wall)
-    var hammer_head := core.hammer.to_global(Vector2(0.88, -3.13))
+    var hammer_head := core.hammer.to_global(Vector2(1.31, -4.14))
     var head_before_wall := hammer_head.x <= 2.54
     _assert(wall_contact and head_before_wall, "Hammer head must contact the wall without tunnelling")
     _assert(core.last_contact, "World contact must be exposed to the climbing HUD")
