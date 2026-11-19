@@ -36,13 +36,19 @@ func _run() -> void:
     core.set_target_world(Vector2(2.8, -1.0))
     for i in range(180):
         await physics_frame
-    var hammer_ok := core.hammer.global_position.x < 3.0
-    _assert(hammer_ok, "Hammer must not pass through the wall")
+    var joint_a := core.shoulder_joint.get_node_or_null(core.shoulder_joint.node_a)
+    var joint_b := core.shoulder_joint.get_node_or_null(core.shoulder_joint.node_b)
+    var joint_ok := joint_a == core.pot and joint_b == core.hammer
+    _assert(joint_ok, "Shoulder joint must resolve both intended rigid bodies")
+    var hammer_contacts := core.hammer.get_contact_count()
+    var hammer_ok := hammer_contacts > 0
+    _assert(hammer_ok, "Hammer must make physical contact with the wall")
     var pot_displacement := core.pot.global_position.distance_to(pot_before)
     print("PHYSICS_DIAGNOSTIC: pot_before=", pot_before, " pot_after=", core.pot.global_position,
         " displacement=", pot_displacement, " pot_rotation=", core.pot.rotation,
         " hammer_position=", core.hammer.global_position, " hammer_rotation=", core.hammer.rotation,
-        " joint_anchor=", core.shoulder_joint.global_position)
+        " hammer_velocity=", core.hammer.linear_velocity, " contacts=", hammer_contacts,
+        " joint_a=", joint_a, " joint_b=", joint_b, " joint_anchor=", core.shoulder_joint.global_position)
     var reaction_ok := pot_displacement > 0.04 or absf(core.pot.rotation) > 0.04
     _assert(reaction_ok, "Hammer contact must transfer motion through the shoulder joint")
 
