@@ -84,6 +84,9 @@ func _build_bodies() -> void:
     hammer.center_of_mass_mode = RigidBody2D.CENTER_OF_MASS_MODE_CUSTOM
     hammer.center_of_mass = Vector2.ZERO
     add_child(hammer)
+    # Reapply after entering the tree so the physics server uses the grip as COM.
+    hammer.center_of_mass_mode = RigidBody2D.CENTER_OF_MASS_MODE_CUSTOM
+    hammer.center_of_mass = Vector2.ZERO
 
     initialized = true
 
