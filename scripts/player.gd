@@ -38,6 +38,9 @@ var hammer_pivot: Node3D
 var hammer_head: Node3D
 var scythe_contact_valid := false
 var is_gripping_hold := false
+var hold_anchor_active := false
+var hold_anchor := Vector3.ZERO
+var hold_rope_length := 0.0
 var scythe_contact_point := Vector3.ZERO
 var scythe_contact_collider: Object = null
 var scythe_probe := SphereShape3D.new()
@@ -427,6 +430,7 @@ func _update_scythe(delta: float) -> void:
     is_gripping_hold = false
     scythe_contact_collider = null
     if not dragging:
+        hold_anchor_active = false
         if hazard_cooldown <= 0.0:
             hook_feedback = IDLE_HINT
         return
@@ -460,6 +464,7 @@ func _update_scythe(delta: float) -> void:
 
     _update_pivot()
     if contact.is_empty():
+        hold_anchor_active = false
         if hazard_cooldown <= 0.0:
             hook_feedback = "Коснись экрана и веди серп к камню."
         return
@@ -470,7 +475,13 @@ func _update_scythe(delta: float) -> void:
     var contacted_node := scythe_contact_collider as Node
     if is_instance_valid(contacted_node) and contacted_node.is_in_group("climbable_hold"):
         is_gripping_hold = true
-        hook_feedback = "Зацепился за выступ! Двигай серп, чтобы перелезть."
+        if not hold_anchor_active:
+            hold_anchor = scythe_contact_point
+            hold_rope_length = clampf(global_position.distance_to(hold_anchor), 1.0, 5.5)
+            hold_anchor_active = true
+        hook_feedback = "Зацепился! Раскачивайся и подтягивайся серпом."
+    else:
+        hold_anchor_active = false
     if is_gripping_hold:
         if absf(step_total) >= 0.0005:
             _apply_scythe_push(contact, step_total)
@@ -508,6 +519,25 @@ func _apply_scythe_push(contact: Dictionary, step: float) -> void:
     if impulse.length() > MAX_PUSH_PER_FRAME:
         impulse = impulse.normalized() * MAX_PUSH_PER_FRAME
     velocity += impulse
+
+
+# Pendulum constraint: the hooked scythe becomes a fixed anchor and the climber
+# swings around it under gravity instead of freezing in mid-air.
+func _apply_hold_rope_constraint() -> void:
+    var offset := global_position - hold_anchor
+    offset.z = 0.0
+    var distance := offset.length()
+    if distance < 0.001:
+        return
+    if distance > hold_rope_length:
+        var radial := offset / distance
+        global_position.x = hold_anchor.x + radial.x * hold_rope_length
+        global_position.y = hold_anchor.y + radial.y * hold_rope_length
+        # Remove only velocity that stretches the rope; tangential speed is preserved
+        # so gravity can build a natural pendulum swing.
+        var outward_speed := velocity.dot(radial)
+        if outward_speed > 0.0:
+            velocity -= radial * outward_speed
 
 
 # ---------------------------------------------------------------------------
@@ -583,12 +613,6 @@ func _physics_process(delta: float) -> void:
         velocity.y -= GRAVITY * delta
 
     _update_scythe(delta)
-    # A rock hold supports the climber while the blade remains hooked.
-    # Releasing the finger or moving the blade clear restores normal gravity immediately.
-    if is_gripping_hold:
-        velocity.y = maxf(velocity.y, -0.35)
-        velocity.y = move_toward(velocity.y, 0.0, 24.0 * delta)
-
     if is_on_floor():
         velocity.x = move_toward(velocity.x, 0.0, FLOOR_FRICTION * delta)
     else:
@@ -597,6 +621,8 @@ func _physics_process(delta: float) -> void:
     velocity.y = clampf(velocity.y, -MAX_FALL_SPEED, MAX_RISE_SPEED)
     velocity.z = 0.0
     move_and_slide()
+    if hold_anchor_active:
+        _apply_hold_rope_constraint()
     velocity.z = 0.0
     global_position.z = PLAY_PLANE_Z
 
