@@ -56,6 +56,7 @@ func _run() -> void:
         " displacement=", pot_displacement, " pot_rotation=", core.pot.rotation,
         " hammer_position=", core.hammer.global_position, " hammer_head=", hammer_head,
         " hammer_rotation=", core.hammer.rotation, " contacts=", hammer_contacts,
+        " COM_mode=", core.hammer.center_of_mass_mode, " COM=", core.hammer.center_of_mass,
         " joint_a=", joint_a, " joint_b=", joint_b, " joint_anchor=", core.shoulder_joint.global_position)
     var reaction_ok := pot_displacement > 0.025 or absf(core.pot.rotation) > 0.025
     _assert(reaction_ok, "Hammer contact must transfer motion through the shoulder joint")
