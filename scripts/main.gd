@@ -1099,6 +1099,9 @@ func _process(delta: float) -> void:
     camera.look_at(player.global_position + Vector3(0, 2.25, 0), Vector3.UP)
     if player.global_position.y < -8.0 and not game_over:
         game_over = true
+        player.release_pointer()
+        player.velocity = Vector3.ZERO
+        player.set_physics_process(false)
         status_label.text = _t("fall")
         restart_button.visible = true
 
@@ -1125,6 +1128,7 @@ func _reset_player() -> void:
     respawn.z = 0.0
     player.global_position = respawn
     player.velocity = Vector3.ZERO
+    player.set_physics_process(true)
     player.reset_hammer()
     game_over = false
     restart_button.visible = false
