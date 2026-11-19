@@ -54,6 +54,9 @@ var resume_button_ref: Button
 var reset_menu_ref: Button
 var win_again_ref: Button
 var win_stay_ref: Button
+var current_level := 1
+var level_two_start := Vector3(1.35, 24.55, 0.0)
+var level_two_finish := Vector3(-1.35, 47.23, 0.0)
 const LANGS := ["ru", "en", "es", "fr"]
 const LANG_NAMES := ["Русский", "English", "Español", "Français"]
 const T := {
@@ -146,6 +149,9 @@ func _build_world() -> void:
 
     _build_climbable_rock_holds()
 
+    # Level 2: the same mountain backdrop continues above the first summit.
+    _build_shadow_level_course()
+
     # Keep the central climbing lane readable. Natural cliff outcrops frame
     # the route from the far left and right instead of spawning in front of it.
     for side in [-1.0, 1.0]:
@@ -222,9 +228,9 @@ func _build_mountain_backdrop() -> void:
     var surface := SurfaceTool.new()
     surface.begin(Mesh.PRIMITIVE_TRIANGLES)
     var columns := 48
-    var rows := 68
+    var rows := 112
     var width := 30.0
-    var height := 42.0
+    var height := 70.0
     var vertices: Array[Vector3] = []
     var colors: Array[Color] = []
     for row in range(rows + 1):
@@ -506,6 +512,73 @@ func _add_steel_beam(parent: Node3D, start: Vector3, finish: Vector3, width: flo
     beam.quaternion = Quaternion(Vector3.UP, (finish - start).normalized())
     beam.material_override = material
     parent.add_child(beam)
+
+func _build_shadow_level_course() -> void:
+    # A harder upper route: narrow alternating ledges, extra hook points and
+    # black moving silhouettes. The continuous mountain material is untouched.
+    var shadow_ledge := Color(0.035, 0.035, 0.045)
+    for i in range(10):
+        var x := -1.35 if i % 2 == 0 else 1.35
+        var y := 25.50 + float(i) * 2.35
+        _add_platform(Vector3(x, y, 0.0), Vector3(2.35, 0.48, 2.2), shadow_ledge, -0.045 if i % 2 == 0 else 0.045)
+
+        var hold := StaticBody3D.new()
+        hold.name = "ShadowClimbHold_%02d" % i
+        hold.add_to_group("climbable_hold")
+        hold.position = Vector3(-x * 1.55, y + 0.72, -0.12)
+        var rock := MeshInstance3D.new()
+        var rock_mesh := SphereMesh.new()
+        rock_mesh.radius = 0.42
+        rock_mesh.height = 0.64
+        rock.mesh = rock_mesh
+        rock.scale = Vector3(1.25, 0.72, 0.7)
+        var dark := StandardMaterial3D.new()
+        dark.albedo_color = Color.BLACK
+        dark.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+        rock.material_override = dark
+        hold.add_child(rock)
+        var hit := CollisionShape3D.new()
+        var hit_shape := SphereShape3D.new()
+        hit_shape.radius = 0.48
+        hit.shape = hit_shape
+        hold.add_child(hit)
+        add_child(hold)
+
+    # Distinct silhouette hazards: black pendulum weights and bars with real collision.
+    for i in range(6):
+        var hazard := AnimatableBody3D.new()
+        hazard.name = "ShadowPendulum_%02d" % i
+        hazard.position = Vector3(0.0, 27.0 + float(i) * 3.75, 0.0)
+        hazard.add_to_group("climb_hazard")
+        hazard.sync_to_physics = true
+        var black := StandardMaterial3D.new()
+        black.albedo_color = Color.BLACK
+        black.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+        var bar := MeshInstance3D.new()
+        var bar_mesh := BoxMesh.new()
+        bar_mesh.size = Vector3(0.22, 2.1, 0.28)
+        bar.mesh = bar_mesh
+        bar.position.y = -0.95
+        bar.material_override = black
+        hazard.add_child(bar)
+        var weight := MeshInstance3D.new()
+        var weight_mesh := SphereMesh.new()
+        weight_mesh.radius = 0.52
+        weight_mesh.height = 1.04
+        weight.mesh = weight_mesh
+        weight.position.y = -2.0
+        weight.material_override = black
+        hazard.add_child(weight)
+        var collision := CollisionShape3D.new()
+        var capsule := CapsuleShape3D.new()
+        capsule.radius = 0.34
+        capsule.height = 2.9
+        collision.shape = capsule
+        collision.position.y = -1.35
+        hazard.add_child(collision)
+        moving_obstacles.append(hazard)
+        obstacle_phases.append(float(i) * 1.05 + 0.5)
+        add_child(hazard)
 
 func _build_checkpoints() -> void:
     # Respawn points are centered over the third, sixth and ninth safe ledges.
@@ -1254,7 +1327,7 @@ func _reset_player() -> void:
         pause_button.text = "II"
     if is_instance_valid(pause_overlay):
         pause_overlay.visible = false
-    var respawn := Vector3(0, 1.0, 0)
+    var respawn := Vector3(0, 1.0, 0) if current_level == 1 else level_two_start
     if active_checkpoint > 0:
         respawn = checkpoint_positions[active_checkpoint - 1] + Vector3(0, 0.65, 0)
     respawn.z = 0.0
@@ -1273,7 +1346,7 @@ func _fall_back_to_start() -> void:
     # Checkpoints remain available for manual reset, but a fall always restarts at the beginning.
     player.release_pointer()
     player.velocity = Vector3.ZERO
-    player.global_position = Vector3(0.0, 1.0, 0.0)
+    player.global_position = Vector3(0.0, 1.0, 0.0) if current_level == 1 else level_two_start
     player.reset_hammer()
     active_checkpoint = 0
     game_over = false
@@ -1282,9 +1355,40 @@ func _fall_back_to_start() -> void:
     checkpoint_label.text = _t("checkpoint")
     status_label.text = _t("touch")
 
+func _on_win_primary_action() -> void:
+    if current_level == 1:
+        _advance_to_shadow_level()
+    else:
+        _restart_run()
+
+func _advance_to_shadow_level() -> void:
+    current_level = 2
+    finished = false
+    game_over = false
+    active_checkpoint = 0
+    checkpoint_positions = [
+        Vector3(1.35, 30.15, 0.0),
+        Vector3(-1.35, 37.20, 0.0),
+        Vector3(1.35, 44.25, 0.0)
+    ]
+    finish_position = level_two_finish
+    start_y = level_two_start.y
+    player.set_silhouette_mode(true)
+    player.global_position = level_two_start
+    player.velocity = Vector3.ZERO
+    player.reset_hammer()
+    win_overlay.visible = false
+    restart_button.visible = false
+    checkpoint_label.text = "ТЕНЕВОЙ УРОВЕНЬ  •  КП 0"
+    status_label.text = "ТЕНЬ НАЧИНАЕТСЯ. ЦЕПЛЯЙСЯ ЗА ЧЁРНЫЕ ВЫСТУПЫ."
+    get_tree().paused = false
+
 func _restart_run() -> void:
     active_checkpoint = 0
-    checkpoint_label.text = "СТАРТ  •  КП 0"
+    if current_level == 2:
+        checkpoint_label.text = "ТЕНЕВОЙ УРОВЕНЬ  •  КП 0"
+    else:
+        checkpoint_label.text = "СТАРТ  •  КП 0"
     _reset_player()
 
 func _check_finish() -> void:
@@ -1293,7 +1397,9 @@ func _check_finish() -> void:
     if player.global_position.distance_to(finish_position) < 1.1:
         finished = true
         player.release_pointer()
-        win_label.text = _t("win") % int(best_height)
+        win_label.text = ("УРОВЕНЬ 1 ПРОЙДЕН!" if current_level == 1 else "ТЕНЕВОЙ УРОВЕНЬ ПРОЙДЕН!") + "\\n" + ("Рекорд: %d м" % int(best_height))
+        if is_instance_valid(win_again_ref):
+            win_again_ref.text = "ПЕРЕЙТИ НА УРОВЕНЬ 2" if current_level == 1 else "ИГРАТЬ СНОВА"
         win_overlay.visible = true
         _save_record()
 
@@ -1338,7 +1444,7 @@ func _build_win_overlay(hud: CanvasLayer) -> void:
     win_again_ref = again
     again.custom_minimum_size = Vector2(300, 54)
     _style_hud_button(again, Color(0.08, 0.42, 0.36, 1.0))
-    again.pressed.connect(_restart_run)
+    again.pressed.connect(_on_win_primary_action)
     box.add_child(again)
 
     var stay := Button.new()
