@@ -8,7 +8,7 @@ const POT_ANGULAR_DAMP := 0.28
 const POT_FRICTION := 1.15
 const HAMMER_MASS := 0.85
 const HAMMER_FRICTION := 0.9
-const ARM_REACH := 3.95
+const ARM_REACH := 4.3
 const MOTOR_TORQUE := 95.0
 const MOTOR_KP := 155.0
 const MOTOR_KD := 18.0
@@ -80,7 +80,7 @@ func _build_bodies() -> void:
     var head := CircleShape2D.new()
     head.radius = HAMMER_HEAD_RADIUS
     head_shape.shape = head
-    head_shape.position = Vector2(0.88, -HAMMER_SHAFT_LENGTH - 0.48)
+    head_shape.position = Vector2(1.31, -4.14)
     hammer.add_child(head_shape)
     # The tool is gripped at its body origin; keep its centre of mass there
     # so the shoulder pin does not orbit around the shaft's geometric centroid.
