@@ -56,7 +56,7 @@ var win_again_ref: Button
 var win_stay_ref: Button
 var current_level := 1
 var level_two_start := Vector3(1.35, 24.55, 0.0)
-var level_two_finish := Vector3(-1.35, 47.23, 0.0)
+var level_two_finish := Vector3(-1.35, 49.58, 0.0)
 const LANGS := ["ru", "en", "es", "fr"]
 const LANG_NAMES := ["Русский", "English", "Español", "Français"]
 const T := {
@@ -544,6 +544,24 @@ func _build_shadow_level_course() -> void:
         hit.shape = hit_shape
         hold.add_child(hit)
         add_child(hold)
+
+    # A final safe foothold makes the summit reachable by the same hook-and-swing rules.
+    _add_platform(Vector3(level_two_finish.x, level_two_finish.y - 0.58, 0.0), Vector3(2.65, 0.5, 2.25), shadow_ledge)
+
+    # Visible checkpoint sigils match the silhouette language of this level.
+    for checkpoint_pos in [Vector3(1.35, 30.15, 0.0), Vector3(-1.35, 37.20, 0.0), Vector3(1.35, 44.25, 0.0)]:
+        var checkpoint_ring := MeshInstance3D.new()
+        var checkpoint_mesh := TorusMesh.new()
+        checkpoint_mesh.inner_radius = 0.52
+        checkpoint_mesh.outer_radius = 0.66
+        checkpoint_ring.mesh = checkpoint_mesh
+        checkpoint_ring.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+        var checkpoint_black := StandardMaterial3D.new()
+        checkpoint_black.albedo_color = Color.BLACK
+        checkpoint_black.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+        checkpoint_ring.material_override = checkpoint_black
+        checkpoint_ring.position = checkpoint_pos
+        add_child(checkpoint_ring)
 
     var summit_shadow := MeshInstance3D.new()
     var summit_ring := TorusMesh.new()
