@@ -23,6 +23,9 @@
 Скрипты: `scripts/main.gd`, `scripts/player.gd`.
 Модели и текстуры: `assets/models/`.
 
+## Editor plugins
+- Phantom Camera 0.9.3 is included and enabled for Godot 4.3 editor workflows on the `plugin-integration` branch. Runtime camera migration is intentionally separate until the current follow camera is regression-tested.
+
 ## Android APK
 GitHub Actions запускает сборку при push в `main` или вручную через вкладку Actions → Android Debug APK → Run workflow.
 Артефакт называется `CLIMB-MASTER-Android-debug`.

@@ -54,6 +54,9 @@ var resume_button_ref: Button
 var reset_menu_ref: Button
 var win_again_ref: Button
 var win_stay_ref: Button
+var current_level := 1
+var level_two_start := Vector3(1.35, 24.55, 0.0)
+var level_two_finish := Vector3(-1.35, 49.58, 0.0)
 const LANGS := ["ru", "en", "es", "fr"]
 const LANG_NAMES := ["Русский", "English", "Español", "Français"]
 const T := {
@@ -69,7 +72,8 @@ func _ready() -> void:
     # The old imported pack and second asset course duplicated the same climbing lane.
     _build_photogrammetry_boulders()
     _build_industrial_structures()
-    _build_checkpoints()
+    _build_finish_marker()
+    # Checkpoints removed: every fall returns to the start of the current level.
     _build_obstacles()
     _build_collectibles()
     _build_atmosphere()
@@ -144,6 +148,12 @@ func _build_world() -> void:
         var tilt := -0.035 if i % 2 == 0 else 0.035
         _add_platform(Vector3(point.x, point.y, 0.0), LEDGE_SIZE, ledge_colors[i % ledge_colors.size()], tilt)
 
+    _build_climbable_rock_holds()
+
+    # Level 2: the same mountain backdrop continues above the first summit.
+    _build_shadow_level_course()
+    _build_life_obstacles()
+
     # Keep the central climbing lane readable. Natural cliff outcrops frame
     # the route from the far left and right instead of spawning in front of it.
     for side in [-1.0, 1.0]:
@@ -170,6 +180,285 @@ func _build_world() -> void:
             outcrop.position = Vector3(side * 5.0, 1.5 + float(level) * 3.15, -0.25)
             add_child(outcrop)
 
+    _build_mountain_backdrop()
+
+
+
+
+
+
+func _build_life_obstacles() -> void:
+    var metal := StandardMaterial3D.new()
+    metal.albedo_color = Color(0.22, 0.27, 0.30)
+    metal.metallic = 0.82
+    metal.roughness = 0.38
+    var paint := StandardMaterial3D.new()
+    paint.albedo_color = Color(0.48, 0.25, 0.16)
+    paint.roughness = 0.76
+    var dark := StandardMaterial3D.new()
+    dark.albedo_color = Color.BLACK if current_level == 2 else Color(0.12, 0.15, 0.18)
+    dark.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+
+    # Large houses and high-rise buildings in the distant skyline.
+    for i in range(8):
+        var building := MeshInstance3D.new()
+        var block := BoxMesh.new()
+        block.size = Vector3(2.8 + float(i % 3) * 0.7, 5.0 + float(i % 4) * 1.5, 1.5)
+        building.mesh = block
+        building.position = Vector3(-10.0 if i % 2 == 0 else 10.0, 5.0 + float(i) * 6.0, -7.0)
+        var facade := StandardMaterial3D.new()
+        facade.albedo_color = Color(0.18, 0.21, 0.24)
+        building.material_override = facade
+        add_child(building)
+
+    # Pipes, air conditioners, signs, chairs, barrels and wheels are hookable.
+    for i in range(14):
+        var y := 3.0 + float(i) * 3.25
+        var side := -1.0 if i % 2 == 0 else 1.0
+        var body := StaticBody3D.new()
+        body.name = "EverydayClimbObject_%02d" % i
+        body.add_to_group("climbable_hold")
+        body.position = Vector3(side * (3.0 + float(i % 3) * 0.28), y, -0.08)
+        var visual := MeshInstance3D.new()
+        var mesh: Mesh
+        match i % 6:
+            0:
+                var pipe := CylinderMesh.new()
+                pipe.top_radius = 0.18
+                pipe.bottom_radius = 0.18
+                pipe.height = 1.7
+                mesh = pipe
+                visual.rotation_degrees.z = 90.0
+                visual.material_override = metal
+            1:
+                var ac := BoxMesh.new()
+                ac.size = Vector3(1.0, 0.7, 0.75)
+                mesh = ac
+                visual.material_override = metal
+            2:
+                var sign := BoxMesh.new()
+                sign.size = Vector3(1.2, 0.72, 0.12)
+                mesh = sign
+                visual.material_override = paint
+            3:
+                var chair := BoxMesh.new()
+                chair.size = Vector3(0.78, 0.15, 0.65)
+                mesh = chair
+                visual.material_override = dark
+            4:
+                var barrel := CylinderMesh.new()
+                barrel.top_radius = 0.34
+                barrel.bottom_radius = 0.34
+                barrel.height = 0.85
+                mesh = barrel
+                visual.material_override = paint
+            _:
+                var wheel := TorusMesh.new()
+                wheel.inner_radius = 0.25
+                wheel.outer_radius = 0.40
+                mesh = wheel
+                visual.rotation_degrees.x = 90.0
+                visual.material_override = dark
+        visual.mesh = mesh
+        body.add_child(visual)
+        var hit := CollisionShape3D.new()
+        var sphere := SphereShape3D.new()
+        sphere.radius = maxf(0.20, 0.48 - float(i) * 0.018)
+        hit.shape = sphere
+        body.add_child(hit)
+        add_child(body)
+
+    # Three suspended cars with chassis, cabin and four wheels.
+    for i in range(3):
+        var car := StaticBody3D.new()
+        car.name = "SuspendedCar_%02d" % i
+        car.add_to_group("climbable_hold")
+        car.position = Vector3(-4.0 if i % 2 == 0 else 4.0, 12.0 + float(i) * 11.0, -0.2)
+        var chassis := MeshInstance3D.new()
+        var chassis_mesh := BoxMesh.new()
+        chassis_mesh.size = Vector3(2.25, 0.55, 0.9)
+        chassis.mesh = chassis_mesh
+        chassis.material_override = paint
+        car.add_child(chassis)
+        var cabin := MeshInstance3D.new()
+        var cabin_mesh := BoxMesh.new()
+        cabin_mesh.size = Vector3(1.1, 0.52, 0.78)
+        cabin.mesh = cabin_mesh
+        cabin.position.y = 0.5
+        cabin.material_override = metal
+        car.add_child(cabin)
+        for wx in [-0.72, 0.72]:
+            for wz in [-0.34, 0.34]:
+                var tire := MeshInstance3D.new()
+                var tire_mesh := CylinderMesh.new()
+                tire_mesh.top_radius = 0.24
+                tire_mesh.bottom_radius = 0.24
+                tire_mesh.height = 0.15
+                tire.mesh = tire_mesh
+                tire.rotation_degrees.z = 90.0
+                tire.position = Vector3(wx, -0.28, wz)
+                tire.material_override = dark
+                car.add_child(tire)
+        var car_hit := CollisionShape3D.new()
+        var car_shape := BoxShape3D.new()
+        car_shape.size = Vector3(2.35, 1.0, 0.95)
+        car_hit.shape = car_shape
+        car.add_child(car_hit)
+        add_child(car)
+
+    # Operator / radio towers built from steel lattice and cross braces.
+    for i in range(2):
+        var tower := Node3D.new()
+        tower.name = "OperatorTower_%02d" % i
+        tower.position = Vector3(5.7 if i == 0 else -5.7, 21.0 + float(i) * 23.0, -0.45)
+        add_child(tower)
+        for tier in range(6):
+            var yy := float(tier) * 1.2
+            _add_steel_beam(tower, Vector3(-0.45, yy, 0.0), Vector3(0.45, yy, 0.0), 0.075, metal)
+            if tier < 5:
+                _add_steel_beam(tower, Vector3(-0.45, yy, 0.0), Vector3(0.45, yy + 1.2, 0.0), 0.04, paint)
+                _add_steel_beam(tower, Vector3(0.45, yy, 0.0), Vector3(-0.45, yy + 1.2, 0.0), 0.04, paint)
+        _add_steel_beam(tower, Vector3(0.0, 6.0, 0.0), Vector3(0.0, 7.2, 0.0), 0.05, metal)
+        var dish := MeshInstance3D.new()
+        var dish_mesh := TorusMesh.new()
+        dish_mesh.inner_radius = 0.3
+        dish_mesh.outer_radius = 0.38
+        dish.mesh = dish_mesh
+        dish.position.y = 5.4
+        dish.material_override = metal
+        tower.add_child(dish)
+
+func _build_climbable_rock_holds() -> void:
+    # Natural, collidable handholds sit on the playable Z plane.
+    # They add alternative hook points between the broad route platforms.
+    var rock_palette := [
+        Color(0.30, 0.32, 0.33), Color(0.36, 0.32, 0.27),
+        Color(0.25, 0.29, 0.32), Color(0.39, 0.35, 0.30)
+    ]
+    for i in range(20):
+        var side := -1.0 if i % 2 == 0 else 1.0
+        var tier := float(i)
+        var hold := StaticBody3D.new()
+        hold.name = "ClimbableRockHold_%02d" % i
+        hold.add_to_group("climbable_hold")
+        hold.position = Vector3(side * (2.55 + float(i % 3) * 0.22), 1.15 + tier * 1.12, -0.18)
+        hold.collision_layer = 1
+        hold.collision_mask = 1
+
+        var rock := MeshInstance3D.new()
+        var rock_mesh := SphereMesh.new()
+        rock_mesh.radius = 1.0
+        rock_mesh.height = 1.65
+        rock.mesh = rock_mesh
+        var progress := float(i) / 19.0
+        var radius := lerpf(0.58, 0.19, progress) + float(i % 2) * 0.025
+        rock.scale = Vector3(radius * 1.28, radius, 0.48)
+        rock.rotation = Vector3(float(i % 3) * 0.11, float(i % 5) * 0.17, float(i % 4) * 0.09)
+        var material := StandardMaterial3D.new()
+        material.albedo_color = rock_palette[i % rock_palette.size()]
+        material.roughness = 0.97
+        rock.material_override = material
+        hold.add_child(rock)
+
+        var collision := CollisionShape3D.new()
+        var shape := SphereShape3D.new()
+        shape.radius = radius
+        collision.shape = shape
+        collision.scale = Vector3(1.28, 1.0, 0.85)
+        hold.add_child(collision)
+        add_child(hold)
+
+func _build_mountain_backdrop() -> void:
+    # One continuous, triangulated cliff face replaces the old tiled sphere backdrop.
+    # Vertex displacement and color variation create broad natural rock strata.
+    var surface := SurfaceTool.new()
+    surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+    var columns := 48
+    var rows := 112
+    var width := 30.0
+    var height := 70.0
+    var vertices: Array[Vector3] = []
+    var colors: Array[Color] = []
+    for row in range(rows + 1):
+        var v := float(row) / float(rows)
+        var y := -4.0 + v * height
+        for column in range(columns + 1):
+            var u := float(column) / float(columns)
+            var x := -width * 0.5 + u * width
+            var broad_ridge := sin(x * 0.42 + y * 0.16) * 0.72
+            var broken_ridge := sin(x * 1.13 - y * 0.31) * 0.24
+            var strata := sin(y * 1.65 + x * 0.22) * 0.12
+            var z := -4.65 + broad_ridge + broken_ridge + strata
+            vertices.append(Vector3(x, y, z))
+            var shade := 0.15 + 0.035 * sin(x * 0.8 + y * 0.37) + 0.025 * cos(y * 1.4 - x * 0.3)
+            colors.append(Color(shade * 0.92, shade, shade * 1.08, 1.0))
+
+    for row in range(rows):
+        for column in range(columns):
+            var i := row * (columns + 1) + column
+            var a := vertices[i]
+            var b := vertices[i + 1]
+            var c := vertices[i + columns + 1]
+            var d := vertices[i + columns + 2]
+            surface.set_color(colors[i])
+            surface.add_vertex(a)
+            surface.set_color(colors[i + 1])
+            surface.add_vertex(b)
+            surface.set_color(colors[i + columns + 1])
+            surface.add_vertex(c)
+            surface.set_color(colors[i + 1])
+            surface.add_vertex(b)
+            surface.set_color(colors[i + columns + 2])
+            surface.add_vertex(d)
+            surface.set_color(colors[i + columns + 1])
+            surface.add_vertex(c)
+
+    surface.generate_normals()
+    var cliff := MeshInstance3D.new()
+    cliff.name = "ContinuousMountainMassif"
+    cliff.mesh = surface.commit()
+    var cliff_material := StandardMaterial3D.new()
+    cliff_material.vertex_color_use_as_albedo = true
+    cliff_material.roughness = 1.0
+    cliff_material.metallic = 0.0
+    cliff.material_override = cliff_material
+    add_child(cliff)
+
+    # Distant side ridges frame the playable lane without hiding the footholds.
+    var ridge_material := StandardMaterial3D.new()
+    ridge_material.albedo_color = Color(0.12, 0.145, 0.17)
+    ridge_material.roughness = 1.0
+    for side in [-1.0, 1.0]:
+        for tier in range(5):
+            var ridge := MeshInstance3D.new()
+            var ridge_mesh := SphereMesh.new()
+            ridge_mesh.radius = 1.0
+            ridge_mesh.height = 2.0
+            ridge.mesh = ridge_mesh
+            ridge.scale = Vector3(2.4 + float(tier % 2) * 0.7, 3.0, 1.15)
+            ridge.position = Vector3(side * (9.0 + float(tier % 2) * 1.2), 1.0 + float(tier) * 7.2, -3.65)
+            ridge.material_override = ridge_material
+            add_child(ridge)
+
+    # Broad, solid valley floor: the player can land safely below the first ledge.
+    var valley_floor := StaticBody3D.new()
+    valley_floor.name = "MountainValleyFloor"
+    valley_floor.position = Vector3(0.0, -1.82, 0.0)
+    var floor_visual := MeshInstance3D.new()
+    var floor_box := BoxMesh.new()
+    floor_box.size = Vector3(120.0, 0.7, 80.0)
+    floor_visual.mesh = floor_box
+    var floor_material := StandardMaterial3D.new()
+    floor_material.albedo_color = Color(0.20, 0.22, 0.23)
+    floor_material.roughness = 1.0
+    floor_visual.material_override = floor_material
+    valley_floor.add_child(floor_visual)
+    var floor_collision := CollisionShape3D.new()
+    var floor_shape := BoxShape3D.new()
+    floor_shape.size = floor_box.size
+    floor_collision.shape = floor_shape
+    valley_floor.add_child(floor_collision)
+    add_child(valley_floor)
 
 
 func _build_photogrammetry_boulders() -> void:
@@ -370,47 +659,94 @@ func _add_steel_beam(parent: Node3D, start: Vector3, finish: Vector3, width: flo
     beam.material_override = material
     parent.add_child(beam)
 
+func _build_shadow_level_course() -> void:
+    # A harder upper route: narrow alternating ledges, extra hook points and
+    # black moving silhouettes. The continuous mountain material is untouched.
+    var shadow_ledge := Color(0.035, 0.035, 0.045)
+    _add_platform(Vector3(level_two_start.x, 24.0, 0.0), Vector3(2.7, 0.5, 2.3), shadow_ledge)
+    for i in range(10):
+        var x := -1.35 if i % 2 == 0 else 1.35
+        var y := 25.50 + float(i) * 2.35
+        _add_platform(Vector3(x, y, 0.0), Vector3(2.35, 0.48, 2.2), shadow_ledge, -0.045 if i % 2 == 0 else 0.045)
+
+        var hold := StaticBody3D.new()
+        hold.name = "ShadowClimbHold_%02d" % i
+        hold.add_to_group("climbable_hold")
+        hold.position = Vector3(-x * 1.55, y + 0.72, -0.12)
+        var rock := MeshInstance3D.new()
+        var rock_mesh := SphereMesh.new()
+        var hold_progress := float(i) / 9.0
+        var hold_radius := lerpf(0.38, 0.13, hold_progress)
+        rock_mesh.radius = hold_radius
+        rock_mesh.height = hold_radius * 1.55
+        rock.mesh = rock_mesh
+        rock.scale = Vector3(1.25, 0.72, 0.7)
+        var dark := StandardMaterial3D.new()
+        dark.albedo_color = Color.BLACK
+        dark.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+        rock.material_override = dark
+        hold.add_child(rock)
+        var hit := CollisionShape3D.new()
+        var hit_shape := SphereShape3D.new()
+        hit_shape.radius = hold_radius * 1.12
+        hit.shape = hit_shape
+        hold.add_child(hit)
+        add_child(hold)
+
+    # A final safe foothold makes the summit reachable by the same hook-and-swing rules.
+    _add_platform(Vector3(level_two_finish.x, level_two_finish.y - 0.58, 0.0), Vector3(2.65, 0.5, 2.25), shadow_ledge)
+
+    var summit_shadow := MeshInstance3D.new()
+    var summit_ring := TorusMesh.new()
+    summit_ring.inner_radius = 0.72
+    summit_ring.outer_radius = 0.94
+    summit_shadow.mesh = summit_ring
+    summit_shadow.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+    var summit_black := StandardMaterial3D.new()
+    summit_black.albedo_color = Color.BLACK
+    summit_black.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+    summit_shadow.material_override = summit_black
+    summit_shadow.position = level_two_finish
+    add_child(summit_shadow)
+
+    # Distinct silhouette hazards: black pendulum weights and bars with real collision.
+    for i in range(6):
+        var hazard := AnimatableBody3D.new()
+        hazard.name = "ShadowPendulum_%02d" % i
+        hazard.position = Vector3(0.0, 27.0 + float(i) * 3.75, 0.0)
+        hazard.add_to_group("climb_hazard")
+        hazard.sync_to_physics = true
+        var black := StandardMaterial3D.new()
+        black.albedo_color = Color.BLACK
+        black.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+        var bar := MeshInstance3D.new()
+        var bar_mesh := BoxMesh.new()
+        bar_mesh.size = Vector3(0.22, 2.1, 0.28)
+        bar.mesh = bar_mesh
+        bar.position.y = -0.95
+        bar.material_override = black
+        hazard.add_child(bar)
+        var weight := MeshInstance3D.new()
+        var weight_mesh := SphereMesh.new()
+        weight_mesh.radius = 0.52
+        weight_mesh.height = 1.04
+        weight.mesh = weight_mesh
+        weight.position.y = -2.0
+        weight.material_override = black
+        hazard.add_child(weight)
+        var collision := CollisionShape3D.new()
+        var capsule := CapsuleShape3D.new()
+        capsule.radius = 0.34
+        capsule.height = 2.9
+        collision.shape = capsule
+        collision.position.y = -1.35
+        hazard.add_child(collision)
+        moving_obstacles.append(hazard)
+        obstacle_phases.append(float(i) * 1.05 + 0.5)
+        add_child(hazard)
+
 func _build_checkpoints() -> void:
-    # Respawn points are centered over the third, sixth and ninth safe ledges.
     checkpoint_positions.clear()
-    for route_index in [2, 5, 8]:
-        var ledge: Vector2 = ROUTE_LEDGE_POSITIONS[route_index]
-        checkpoint_positions.append(Vector3(ledge.x, ledge.y + 0.58, 0.0))
-    for i in range(checkpoint_positions.size()):
-        var marker := Node3D.new()
-        marker.position = checkpoint_positions[i]
-        add_child(marker)
-
-        var ring := MeshInstance3D.new()
-        var ring_mesh := TorusMesh.new()
-        ring_mesh.inner_radius = 0.65
-        ring_mesh.outer_radius = 0.82
-        ring.mesh = ring_mesh
-        # Keep the checkpoint ring facing the side-on camera.
-        ring.rotation_degrees = Vector3(90.0, 0.0, 0.0)
-        var ring_mat := StandardMaterial3D.new()
-        ring_mat.albedo_color = Color(0.15, 0.85, 0.62)
-        ring_mat.emission_enabled = true
-        ring_mat.emission = Color(0.05, 0.65, 0.42)
-        ring_mat.emission_energy_multiplier = 1.4
-        ring.material_override = ring_mat
-        marker.add_child(ring)
-
-        var beacon := MeshInstance3D.new()
-        var beacon_mesh := CylinderMesh.new()
-        beacon_mesh.top_radius = 0.035
-        beacon_mesh.bottom_radius = 0.12
-        beacon_mesh.height = 1.7
-        beacon.mesh = beacon_mesh
-        beacon.position.y = 0.9
-        var beacon_mat := StandardMaterial3D.new()
-        beacon_mat.albedo_color = Color(0.1, 0.75, 0.55, 0.28)
-        beacon_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-        beacon_mat.emission_enabled = true
-        beacon_mat.emission = Color(0.02, 0.35, 0.22)
-        beacon.material_override = beacon_mat
-        marker.add_child(beacon)
-
     _build_finish_marker()
 
 func _build_finish_marker() -> void:
@@ -1098,16 +1434,10 @@ func _process(delta: float) -> void:
     camera.global_position = camera.global_position.lerp(target_camera, 1.0 - exp(-4.2 * delta))
     camera.look_at(player.global_position + Vector3(0, 2.25, 0), Vector3.UP)
     if player.global_position.y < -8.0 and not game_over:
-        game_over = true
-        status_label.text = _t("fall")
-        restart_button.visible = true
+        _fall_back_to_start()
 
 func _check_checkpoint() -> void:
-    for i in range(active_checkpoint, checkpoint_positions.size()):
-        if player.global_position.distance_to(checkpoint_positions[i]) < 1.45:
-            active_checkpoint = i + 1
-            status_label.text = "КОНТРОЛЬНАЯ ТОЧКА %d СОХРАНЕНА!" % active_checkpoint
-            checkpoint_label.text = _t("checkpoint") if active_checkpoint == 0 else _t("checkpoint_n") % active_checkpoint
+    active_checkpoint = 0
 
 func _reset_player() -> void:
     get_tree().paused = false
@@ -1119,21 +1449,64 @@ func _reset_player() -> void:
         pause_button.text = "II"
     if is_instance_valid(pause_overlay):
         pause_overlay.visible = false
-    var respawn := Vector3(0, 1.0, 0)
+    var respawn := Vector3(0, 1.0, 0) if current_level == 1 else level_two_start
     if active_checkpoint > 0:
         respawn = checkpoint_positions[active_checkpoint - 1] + Vector3(0, 0.65, 0)
     respawn.z = 0.0
     player.global_position = respawn
     player.velocity = Vector3.ZERO
+    player.set_physics_process(true)
     player.reset_hammer()
     game_over = false
     restart_button.visible = false
-    status_label.text = "КАСАЙСЯ ЭКРАНА И ВЕДИ СЕРП  •  ЦЕПЛЯЙСЯ ЗА КРАЯ"
+    status_label.text = "ТЕНЬ НАЧИНАЕТСЯ. ЦЕПЛЯЙСЯ ЗА ЧЁРНЫЕ ВЫСТУПЫ." if current_level == 2 else _t("touch")
 
+
+
+func _fall_back_to_start() -> void:
+    # Falling below the playable area returns the climber to the actual start platform.
+    # Checkpoints remain available for manual reset, but a fall always restarts at the beginning.
+    player.release_pointer()
+    player.velocity = Vector3.ZERO
+    player.global_position = Vector3(0.0, 1.0, 0.0) if current_level == 1 else level_two_start
+    player.reset_hammer()
+    active_checkpoint = 0
+    game_over = false
+    finished = false
+    restart_button.visible = false
+    checkpoint_label.text = "ТЕНЕВОЙ УРОВЕНЬ" if current_level == 2 else _t("checkpoint")
+    status_label.text = "ТЕНЬ НАЧИНАЕТСЯ. ЦЕПЛЯЙСЯ ЗА ЧЁРНЫЕ ВЫСТУПЫ." if current_level == 2 else _t("touch")
+
+func _on_win_primary_action() -> void:
+    if current_level == 1:
+        _advance_to_shadow_level()
+    else:
+        _restart_run()
+
+func _advance_to_shadow_level() -> void:
+    current_level = 2
+    finished = false
+    game_over = false
+    active_checkpoint = 0
+    checkpoint_positions.clear()
+    finish_position = level_two_finish
+    start_y = level_two_start.y
+    player.set_silhouette_mode(true)
+    player.global_position = level_two_start
+    player.velocity = Vector3.ZERO
+    player.reset_hammer()
+    win_overlay.visible = false
+    restart_button.visible = false
+    checkpoint_label.text = "ТЕНЕВОЙ УРОВЕНЬ  •  КП 0"
+    status_label.text = "ТЕНЬ НАЧИНАЕТСЯ. ЦЕПЛЯЙСЯ ЗА ЧЁРНЫЕ ВЫСТУПЫ."
+    get_tree().paused = false
 
 func _restart_run() -> void:
     active_checkpoint = 0
-    checkpoint_label.text = "СТАРТ  •  КП 0"
+    if current_level == 2:
+        checkpoint_label.text = "ТЕНЕВОЙ УРОВЕНЬ  •  КП 0"
+    else:
+        checkpoint_label.text = "СТАРТ  •  КП 0"
     _reset_player()
 
 func _check_finish() -> void:
@@ -1142,7 +1515,9 @@ func _check_finish() -> void:
     if player.global_position.distance_to(finish_position) < 1.1:
         finished = true
         player.release_pointer()
-        win_label.text = _t("win") % int(best_height)
+        win_label.text = ("УРОВЕНЬ 1 ПРОЙДЕН!" if current_level == 1 else "ТЕНЕВОЙ УРОВЕНЬ ПРОЙДЕН!") + "\\n" + ("Рекорд: %d м" % int(best_height))
+        if is_instance_valid(win_again_ref):
+            win_again_ref.text = "ПЕРЕЙТИ НА УРОВЕНЬ 2" if current_level == 1 else "ИГРАТЬ СНОВА"
         win_overlay.visible = true
         _save_record()
 
@@ -1187,7 +1562,7 @@ func _build_win_overlay(hud: CanvasLayer) -> void:
     win_again_ref = again
     again.custom_minimum_size = Vector2(300, 54)
     _style_hud_button(again, Color(0.08, 0.42, 0.36, 1.0))
-    again.pressed.connect(_restart_run)
+    again.pressed.connect(_on_win_primary_action)
     box.add_child(again)
 
     var stay := Button.new()

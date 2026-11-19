@@ -3,7 +3,7 @@ name: Android Debug APK
 on:
   workflow_dispatch:
   push:
-    branches: [ main, cloud-fixes-review, gameplay-path-audit ]
+    branches: [ main, cloud-fixes-review, gameplay-path-audit, plugin-integration ]
 
 jobs:
   export:
@@ -62,6 +62,12 @@ jobs:
             echo "Godot smoke test found a scene, script or resource loading error."
             exit 1
           fi
+
+      - name: Run 2D physics headless tests
+        shell: bash
+        run: |
+          set -o pipefail
+          godot --headless --path . --script res://tests/test_climb_physics_2d.gd 2>&1 | tee /tmp/climb-physics-tests.log
 
       - name: Diagnose Android export configuration
         shell: bash

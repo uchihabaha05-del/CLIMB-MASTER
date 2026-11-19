@@ -12,9 +12,16 @@ window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 window/handheld/orientation=0
 
+[physics]
+2d/default_gravity=19.0
+common/physics_ticks_per_second=120
+
 [rendering]
 textures/vram_compression/import_etc2_astc=true
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/default_filters/use_nearest_mipmap_filter=false
 environment/defaults/default_clear_color=Color(0.055, 0.075, 0.105, 1)
+
+[editor_plugins]
+enabled=PackedStringArray("res://addons/phantom_camera/plugin.cfg")
