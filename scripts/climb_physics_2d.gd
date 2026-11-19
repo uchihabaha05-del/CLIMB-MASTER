@@ -36,7 +36,7 @@ func _build_bodies() -> void:
     pot.linear_damp = POT_LINEAR_DAMP
     pot.angular_damp = POT_ANGULAR_DAMP
     pot.can_sleep = false
-    pot.continuous_cd = true
+    pot.continuous_cd = RigidBody2D.CCD_MODE_CAST_SHAPE
     pot.physics_material_override = _material(POT_FRICTION, 0.02)
     add_child(pot)
 
@@ -60,7 +60,7 @@ func _build_bodies() -> void:
     hammer.linear_damp = 0.025
     hammer.angular_damp = 0.12
     hammer.can_sleep = false
-    hammer.continuous_cd = true
+    hammer.continuous_cd = RigidBody2D.CCD_MODE_CAST_SHAPE
     hammer.physics_material_override = _material(HAMMER_FRICTION, 0.0)
     add_child(hammer)
 
