@@ -72,6 +72,7 @@ func _ready() -> void:
     # The old imported pack and second asset course duplicated the same climbing lane.
     _build_photogrammetry_boulders()
     _build_industrial_structures()
+    _build_finish_marker()
     # Checkpoints removed: every fall returns to the start of the current level.
     _build_obstacles()
     _build_collectibles()
