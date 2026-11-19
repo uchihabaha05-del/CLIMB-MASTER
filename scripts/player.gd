@@ -38,6 +38,7 @@ var hammer_pivot: Node3D
 var hammer_head: Node3D
 var scythe_contact_valid := false
 var is_gripping_hold := false
+var silhouette_mode := false
 var hold_anchor_active := false
 var hold_anchor := Vector3.ZERO
 var hold_rope_length := 0.0
@@ -546,6 +547,21 @@ func _apply_hold_rope_constraint() -> void:
 func release_pointer() -> void:
     dragging = false
     touch_index = -1
+
+func set_silhouette_mode(enabled: bool) -> void:
+    silhouette_mode = enabled
+    var black := StandardMaterial3D.new()
+    black.albedo_color = Color.BLACK
+    black.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+    for node in find_children("*", "", true, false):
+        if node is SpriteBase3D:
+            (node as SpriteBase3D).modulate = Color.BLACK if enabled else Color.WHITE
+        elif node is MeshInstance3D:
+            var mesh_node := node as MeshInstance3D
+            if enabled:
+                mesh_node.material_override = black
+            else:
+                mesh_node.material_override = null
 
 func reset_hammer() -> void:
     aim_angle = START_ANGLE
