@@ -87,9 +87,6 @@ func _build_bodies() -> void:
     hammer.center_of_mass_mode = RigidBody2D.CENTER_OF_MASS_MODE_CUSTOM
     hammer.center_of_mass = Vector2.ZERO
     add_child(hammer)
-    # Reapply after entering the tree so the physics server uses the grip as COM.
-    hammer.center_of_mass_mode = RigidBody2D.CENTER_OF_MASS_MODE_CUSTOM
-    hammer.center_of_mass = Vector2.ZERO
 
     initialized = true
 
@@ -152,8 +149,8 @@ func _physics_process(_delta: float) -> void:
         return
     shoulder_anchor.global_position = pot.global_position + Vector2(0.30, -0.72).rotated(pot.rotation)
     _apply_shoulder_constraint()
-    # A bounded PD torque motor turns the hammer. The pin joint transfers
-    # all reaction forces to the pot; there are no contact impulses by hand.
+    # The bounded PD motor turns the hammer; the shoulder spring transfers
+    # equal-and-opposite contact reactions to the pot without scripted impulses.
     var error := wrapf(target_angle - hammer.rotation, -PI, PI)
     var torque := clampf(error * MOTOR_KP - hammer.angular_velocity * MOTOR_KD,
         -MOTOR_TORQUE, MOTOR_TORQUE)
