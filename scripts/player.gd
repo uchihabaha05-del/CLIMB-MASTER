@@ -63,6 +63,7 @@ var _arm_r: Dictionary = {}
 var _arm_l: Dictionary = {}
 var physics_viewport: SubViewport
 var physics_world: ClimbPhysics2D
+var mirrored_animated_colliders: Array[Dictionary] = []
 
 func _ready() -> void:
     global_position.z = PLAY_PLANE_Z
@@ -105,6 +106,19 @@ func _initialize_2d_physics() -> void:
     physics_world.configure_start(Vector2(global_position.x, -global_position.y))
     physics_world.set_target_world(physics_world.pot.global_position + Vector2(0.5, -2.0))
 
+func _track_animated_collider(source: CollisionShape3D, owner: Node, mirrored: StaticBody2D) -> void:
+    if owner is AnimatableBody3D:
+        mirrored_animated_colliders.append({"source": source, "body": mirrored})
+
+func _sync_animated_colliders() -> void:
+    for entry in mirrored_animated_colliders:
+        var source := entry.get("source") as CollisionShape3D
+        var mirrored := entry.get("body") as StaticBody2D
+        if not is_instance_valid(source) or not is_instance_valid(mirrored):
+            continue
+        mirrored.global_position = Vector2(source.global_position.x, -source.global_position.y)
+        mirrored.global_rotation = -source.global_rotation.z
+
 func _mirror_static_3d_colliders() -> void:
     var scene_root := get_tree().current_scene
     if scene_root == null or physics_world == null:
@@ -134,16 +148,20 @@ func _mirror_static_3d_colliders() -> void:
         var shape := source.shape
         if shape is BoxShape3D:
             var box := shape as BoxShape3D
-            physics_world.add_static_box(center, Vector2(box.size.x * absf(scale_3d.x), box.size.y * absf(scale_3d.y)), rotation_2d, friction)
+            var mirrored := physics_world.add_static_box(center, Vector2(box.size.x * absf(scale_3d.x), box.size.y * absf(scale_3d.y)), rotation_2d, friction)
+            _track_animated_collider(source, owner, mirrored)
         elif shape is SphereShape3D:
             var sphere := shape as SphereShape3D
-            physics_world.add_static_circle(center, sphere.radius * maxf(absf(scale_3d.x), absf(scale_3d.y)), friction)
+            var mirrored := physics_world.add_static_circle(center, sphere.radius * maxf(absf(scale_3d.x), absf(scale_3d.y)), friction)
+            _track_animated_collider(source, owner, mirrored)
         elif shape is CylinderShape3D:
             var cylinder := shape as CylinderShape3D
-            physics_world.add_static_circle(center, cylinder.radius * maxf(absf(scale_3d.x), absf(scale_3d.y)), friction)
+            var mirrored := physics_world.add_static_circle(center, cylinder.radius * maxf(absf(scale_3d.x), absf(scale_3d.y)), friction)
+            _track_animated_collider(source, owner, mirrored)
         elif shape is CapsuleShape3D:
             var capsule_3d := shape as CapsuleShape3D
-            physics_world.add_static_capsule(center, capsule_3d.radius * absf(scale_3d.x), capsule_3d.height * absf(scale_3d.y), rotation_2d, friction)
+            var mirrored := physics_world.add_static_capsule(center, capsule_3d.radius * absf(scale_3d.x), capsule_3d.height * absf(scale_3d.y), rotation_2d, friction)
+            _track_animated_collider(source, owner, mirrored)
         elif shape is ConvexPolygonShape3D:
             var convex := shape as ConvexPolygonShape3D
             var points := PackedVector2Array()
@@ -153,6 +171,18 @@ func _mirror_static_3d_colliders() -> void:
                 var body := physics_world.add_static_polygon(points, friction)
                 body.position = center
                 body.rotation = rotation_2d
+                _track_animated_collider(source, owner, body)
+        elif shape is ConcavePolygonShape3D:
+            var concave := shape as ConcavePolygonShape3D
+            var projected := PackedVector2Array()
+            for point in concave.get_faces():
+                projected.append(Vector2(point.x * absf(scale_3d.x), -point.y * absf(scale_3d.y)))
+            var hull := Geometry2D.convex_hull(projected)
+            if hull.size() >= 3:
+                var body := physics_world.add_static_polygon(hull, friction)
+                body.position = center
+                body.rotation = rotation_2d
+                _track_animated_collider(source, owner, body)
 
 func _make_part(file: String, origin_px: Vector2, z: float) -> Sprite3D:
     var tex := load(PART_DIR + file) as Texture2D
@@ -700,6 +730,7 @@ func _physics_process(delta: float) -> void:
     if not is_instance_valid(physics_world) or not is_instance_valid(physics_world.pot):
         _update_arms()
         return
+    _sync_animated_colliders()
     var pot_position := physics_world.sync_visible_position()
     global_position = Vector3(pot_position.x, -pot_position.y, PLAY_PLANE_Z)
     aim_angle = wrapf(-physics_world.hammer.rotation, -PI, PI)
