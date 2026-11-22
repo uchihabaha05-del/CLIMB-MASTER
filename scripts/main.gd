@@ -9,18 +9,20 @@ var status_label: Label
 var restart_button: Button
 var pause_button: Button
 const ROUTE_LEDGE_POSITIONS := [
-    Vector2(-1.35, 2.0),
-    Vector2(1.35, 4.35),
-    Vector2(-1.35, 6.70),
-    Vector2(1.35, 9.05),
-    Vector2(-1.35, 11.40),
-    Vector2(1.35, 13.75),
-    Vector2(-1.35, 16.10),
-    Vector2(1.35, 18.45),
-    Vector2(-1.35, 20.80),
-    Vector2(1.35, 23.15)
+    Vector2(-0.9, 2.0),
+    Vector2(0.9, 3.85),
+    Vector2(-0.9, 5.70),
+    Vector2(0.9, 7.55),
+    Vector2(-0.9, 9.40),
+    Vector2(0.9, 11.25),
+    Vector2(-0.9, 13.10),
+    Vector2(0.9, 14.95),
+    Vector2(-0.9, 16.80),
+    Vector2(0.9, 18.65),
+    Vector2(-0.9, 20.50),
+    Vector2(0.9, 22.35)
 ]
-const LEDGE_SIZE := Vector3(2.75, 0.56, 2.35)
+const LEDGE_SIZE := Vector3(3.35, 0.68, 2.45)
 const TOP_HEIGHT := 22.75
 const SAVE_PATH := "user://climb_master.cfg"
 var start_y := 0.0
@@ -53,8 +55,8 @@ var reset_menu_ref: Button
 var win_again_ref: Button
 var win_stay_ref: Button
 var current_level := 1
-var level_two_start := Vector3(1.35, 24.55, 0.0)
-var level_two_finish := Vector3(-1.35, 49.58, 0.0)
+var level_two_start := Vector3(0.9, 24.55, 0.0)
+var level_two_finish := Vector3(-0.9, 49.58, 0.0)
 const LANGS := ["ru", "en", "es", "fr"]
 const LANG_NAMES := ["Русский", "English", "Español", "Français"]
 const T := {
@@ -333,13 +335,13 @@ func _build_climbable_rock_holds() -> void:
         Color(0.30, 0.32, 0.33), Color(0.36, 0.32, 0.27),
         Color(0.25, 0.29, 0.32), Color(0.39, 0.35, 0.30)
     ]
-    for i in range(20):
+    for i in range(24):
         var side := -1.0 if i % 2 == 0 else 1.0
         var tier := float(i)
         var hold := StaticBody3D.new()
         hold.name = "ClimbableRockHold_%02d" % i
         hold.add_to_group("climbable_hold")
-        hold.position = Vector3(side * (2.55 + float(i % 3) * 0.22), 1.15 + tier * 1.12, -0.18)
+        hold.position = Vector3(side * (2.05 + float(i % 3) * 0.12), 1.15 + tier * 1.12, -0.18)
         hold.collision_layer = 1
         hold.collision_mask = 1
 
@@ -348,8 +350,8 @@ func _build_climbable_rock_holds() -> void:
         rock_mesh.radius = 1.0
         rock_mesh.height = 1.65
         rock.mesh = rock_mesh
-        var progress := float(i) / 19.0
-        var radius := lerpf(0.58, 0.19, progress) + float(i % 2) * 0.025
+        var progress := float(i) / 23.0
+        var radius := lerpf(0.62, 0.34, progress) + float(i % 2) * 0.025
         rock.scale = Vector3(radius * 1.28, radius, 0.48)
         rock.rotation = Vector3(float(i % 3) * 0.11, float(i % 5) * 0.17, float(i % 4) * 0.09)
         var material := StandardMaterial3D.new()
@@ -662,19 +664,19 @@ func _build_shadow_level_course() -> void:
     # black moving silhouettes. The continuous mountain material is untouched.
     var shadow_ledge := Color(0.035, 0.035, 0.045)
     _add_platform(Vector3(level_two_start.x, 24.0, 0.0), Vector3(2.7, 0.5, 2.3), shadow_ledge)
-    for i in range(10):
-        var x := -1.35 if i % 2 == 0 else 1.35
-        var y := 25.50 + float(i) * 2.35
-        _add_platform(Vector3(x, y, 0.0), Vector3(2.35, 0.48, 2.2), shadow_ledge, -0.045 if i % 2 == 0 else 0.045)
+    for i in range(13):
+        var x := -0.9 if i % 2 == 0 else 0.9
+        var y := 25.50 + float(i) * 1.85
+        _add_platform(Vector3(x, y, 0.0), Vector3(3.25, 0.66, 2.35), shadow_ledge, -0.025 if i % 2 == 0 else 0.025)
 
         var hold := StaticBody3D.new()
         hold.name = "ShadowClimbHold_%02d" % i
         hold.add_to_group("climbable_hold")
-        hold.position = Vector3(-x * 1.55, y + 0.72, -0.12)
+        hold.position = Vector3(-x * 1.25, y + 0.62, -0.12)
         var rock := MeshInstance3D.new()
         var rock_mesh := SphereMesh.new()
-        var hold_progress := float(i) / 9.0
-        var hold_radius := lerpf(0.38, 0.13, hold_progress)
+        var hold_progress := float(i) / 12.0
+        var hold_radius := lerpf(0.48, 0.30, hold_progress)
         rock_mesh.radius = hold_radius
         rock_mesh.height = hold_radius * 1.55
         rock.mesh = rock_mesh
@@ -711,7 +713,7 @@ func _build_shadow_level_course() -> void:
     for i in range(6):
         var hazard := AnimatableBody3D.new()
         hazard.name = "ShadowPendulum_%02d" % i
-        hazard.position = Vector3(0.0, 27.0 + float(i) * 3.75, 0.0)
+        hazard.position = Vector3(-3.15 if i % 2 == 0 else 3.15, 27.0 + float(i) * 3.75, 0.0)
         hazard.add_to_group("climb_hazard")
         hazard.sync_to_physics = true
         var black := StandardMaterial3D.new()
@@ -786,11 +788,11 @@ func _build_obstacles() -> void:
 
     # Pendulums guard the gaps between safe ledges, never the landing zones.
     var hazard_data := [
-        {"x": 0.0, "y": 3.20, "phase": 0.0},
-        {"x": 0.0, "y": 7.90, "phase": 1.4},
-        {"x": 0.0, "y": 12.60, "phase": 2.8},
-        {"x": 0.0, "y": 17.30, "phase": 4.2},
-        {"x": 0.0, "y": 22.00, "phase": 5.4}
+        {"x": -3.25, "y": 3.20, "phase": 0.0},
+        {"x": 3.25, "y": 7.90, "phase": 1.4},
+        {"x": -3.25, "y": 12.60, "phase": 2.8},
+        {"x": 3.25, "y": 17.30, "phase": 4.2},
+        {"x": -3.25, "y": 22.00, "phase": 5.4}
     ]
     for i in range(hazard_data.size()):
         var data: Dictionary = hazard_data[i]
