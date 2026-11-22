@@ -60,10 +60,10 @@ var level_two_finish := Vector3(-0.9, 49.58, 0.0)
 const LANGS := ["ru", "en", "es", "fr"]
 const LANG_NAMES := ["Русский", "English", "Español", "Français"]
 const T := {
-"ru":{"height":"ВЫСОТА","record":"РЕКОРД  %d м","checkpoint":"СТАРТ  •  БЕЗ КП","checkpoint_n":"КОНТРОЛЬНАЯ ТОЧКА  •  %d","touch":"КАСАЙСЯ ЭКРАНА И ВЕДИ СЕРП  •  ЦЕПЛЯЙСЯ ЗА КРАЯ","reset":"СБРОС","pause":"Пауза","resume":"ПРОДОЛЖИТЬ ПОДЪЁМ","to_cp":"К НАЧАЛУ","pause_title":"ПЕРЕДЫШКА","pause_sub":"Подумай над следующим движением","restart":"НАЧАТЬ ЗАНОВО","again":"НАЧАТЬ ЗАНОВО","stay":"ОСТАТЬСЯ НА ВЕРШИНЕ","continue":"ПРОДОЛЖИТЬ","language":"ЯЗЫК","welcome":"ПОКОРИ СВОЮ ВЕРШИНУ","hint":"Коснись экрана и веди серп к камню.","push":"Упёрся. Веди палец, чтобы оттолкнуться.","grip":"Есть упор! Веди серп дальше, чтобы подняться.","hazard":"Опасное препятствие! Обойди его серпом.","fall":"Падение! Возвращаемся на старт.","win":"ВЕРШИНА!\nРекорд: %d м"},
-"en":{"height":"HEIGHT","record":"BEST  %d m","checkpoint":"START  •  NO CHECKPOINTS","checkpoint_n":"CHECKPOINT  •  %d","touch":"DRAG THE SCYTHE  •  HOOK ONTO EDGES","reset":"RESET","pause":"Pause","resume":"CONTINUE CLIMBING","to_cp":"BACK TO START","pause_title":"TAKE A BREATHER","pause_sub":"Plan your next move","restart":"RESTART RUN","again":"PLAY AGAIN","stay":"STAY AT THE SUMMIT","continue":"CONTINUE","language":"LANGUAGE","welcome":"CONQUER YOUR SUMMIT","hint":"Touch the screen and guide the scythe to a rock.","push":"Blocked. Keep dragging to push away.","grip":"Hooked! Keep moving the scythe to climb.","hazard":"Dangerous obstacle! Swing around it.","fall":"You fell! Returning to the start.","win":"SUMMIT REACHED!\nBest: %d m"},
-"es":{"height":"ALTURA","record":"RÉCORD  %d m","checkpoint":"INICIO  •  SIN PUNTOS","checkpoint_n":"PUNTO DE CONTROL  •  %d","touch":"DESLIZA LA HOZ  •  ENGÁNCHATE A LOS BORDES","reset":"REINICIAR","pause":"Pausa","resume":"CONTINUAR ESCALANDO","to_cp":"VOLVER AL INICIO","pause_title":"TOMA UN RESPIRO","pause_sub":"Piensa en tu siguiente movimiento","restart":"REINICIAR PARTIDA","again":"JUGAR DE NUEVO","stay":"QUEDARSE EN LA CIMA","continue":"CONTINUAR","language":"IDIOMA","welcome":"CONQUISTA LA CIMA","hint":"Toca la pantalla y guía la hoz hacia una roca.","push":"Bloqueado. Sigue deslizando para impulsarte.","grip":"¡Enganchado! Sigue moviendo la hoz para subir.","hazard":"¡Obstáculo peligroso! Rodéalo con la hoz.","fall":"¡Has caído! Volvemos al inicio.","win":"¡HAS LLEGADO A LA CIMA!\nRécord: %d m"},
-"fr":{"height":"HAUTEUR","record":"RECORD  %d m","checkpoint":"DÉPART  •  SANS POINT DE CONTRÔLE","checkpoint_n":"POINT DE CONTRÔLE  •  %d","touch":"FAIS GLISSER LA FAUCILLE  •  ACCROCHE-TOI AUX REBORDS","reset":"RÉINITIALISER","pause":"Pause","resume":"CONTINUER L’ASCENSION","to_cp":"RETOUR AU DÉPART","pause_title":"PETITE PAUSE","pause_sub":"Prépare ton prochain mouvement","restart":"RECOMMENCER","again":"REJOUER","stay":"RESTER AU SOMMET","continue":"CONTINUER","language":"LANGUE","welcome":"CONQUIERS TON SOMMET","hint":"Touche l’écran et guide la faucille vers un rocher.","push":"Bloqué. Continue à glisser pour te repousser.","grip":"Accroché ! Continue à bouger la faucille pour grimper.","hazard":"Obstacle dangereux ! Contourne-le avec la faucille.","fall":"Chute ! Retour au départ.","win":"SOMMET ATTEINT !\nRecord : %d m"}
+"ru":{"height":"ВЫСОТА","record":"РЕКОРД  %d м","checkpoint":"СТАРТ  •  БЕЗ КП","checkpoint_n":"КОНТРОЛЬНАЯ ТОЧКА  •  %d","touch":"КАСАЙСЯ ЭКРАНА И ВЕДИ СЕРП  •  ЦЕПЛЯЙСЯ ЗА КРАЯ","reset":"СБРОС","pause":"Пауза","resume":"ПРОДОЛЖИТЬ ПОДЪЁМ","to_cp":"К НАЧАЛУ","pause_title":"ПЕРЕДЫШКА","pause_sub":"Подумай над следующим движением","restart":"НАЧАТЬ ЗАНОВО","again":"НАЧАТЬ ЗАНОВО","stay":"ОСТАТЬСЯ НА ВЕРШИНЕ","continue":"ПРОДОЛЖИТЬ","language":"ЯЗЫК","welcome":"ПОКОРИ СВОЮ ВЕРШИНУ","hint":"1. Веди пальцем — серп следует за ним.\n2. Зацепись за уступ.\n3. Оттолкнись и тянись к следующему светлому кругу.","push":"Упёрся. Веди палец, чтобы оттолкнуться.","grip":"Есть упор! Веди серп дальше, чтобы подняться.","hazard":"Опасное препятствие! Обойди его серпом.","fall":"Падение! Возвращаемся на старт.","win":"ВЕРШИНА!\nРекорд: %d м"},
+"en":{"height":"HEIGHT","record":"BEST  %d m","checkpoint":"START  •  NO CHECKPOINTS","checkpoint_n":"CHECKPOINT  •  %d","touch":"DRAG THE SCYTHE  •  HOOK ONTO EDGES","reset":"RESET","pause":"Pause","resume":"CONTINUE CLIMBING","to_cp":"BACK TO START","pause_title":"TAKE A BREATHER","pause_sub":"Plan your next move","restart":"RESTART RUN","again":"PLAY AGAIN","stay":"STAY AT THE SUMMIT","continue":"CONTINUE","language":"LANGUAGE","welcome":"CONQUER YOUR SUMMIT","hint":"1. Drag your finger to move the scythe.\n2. Hook onto a ledge.\n3. Push away and reach the next glowing ring.","push":"Blocked. Keep dragging to push away.","grip":"Hooked! Keep moving the scythe to climb.","hazard":"Dangerous obstacle! Swing around it.","fall":"You fell! Returning to the start.","win":"SUMMIT REACHED!\nBest: %d m"},
+"es":{"height":"ALTURA","record":"RÉCORD  %d m","checkpoint":"INICIO  •  SIN PUNTOS","checkpoint_n":"PUNTO DE CONTROL  •  %d","touch":"DESLIZA LA HOZ  •  ENGÁNCHATE A LOS BORDES","reset":"REINICIAR","pause":"Pausa","resume":"CONTINUAR ESCALANDO","to_cp":"VOLVER AL INICIO","pause_title":"TOMA UN RESPIRO","pause_sub":"Piensa en tu siguiente movimiento","restart":"REINICIAR PARTIDA","again":"JUGAR DE NUEVO","stay":"QUEDARSE EN LA CIMA","continue":"CONTINUAR","language":"IDIOMA","welcome":"CONQUISTA LA CIMA","hint":"1. Desliza el dedo para mover la hoz.\n2. Engánchate a un borde.\n3. Impúlsate hacia el siguiente aro brillante.","push":"Bloqueado. Sigue deslizando para impulsarte.","grip":"¡Enganchado! Sigue moviendo la hoz para subir.","hazard":"¡Obstáculo peligroso! Rodéalo con la hoz.","fall":"¡Has caído! Volvemos al inicio.","win":"¡HAS LLEGADO A LA CIMA!\nRécord: %d m"},
+"fr":{"height":"HAUTEUR","record":"RECORD  %d m","checkpoint":"DÉPART  •  SANS POINT DE CONTRÔLE","checkpoint_n":"POINT DE CONTRÔLE  •  %d","touch":"FAIS GLISSER LA FAUCILLE  •  ACCROCHE-TOI AUX REBORDS","reset":"RÉINITIALISER","pause":"Pause","resume":"CONTINUER L’ASCENSION","to_cp":"RETOUR AU DÉPART","pause_title":"PETITE PAUSE","pause_sub":"Prépare ton prochain mouvement","restart":"RECOMMENCER","again":"REJOUER","stay":"RESTER AU SOMMET","continue":"CONTINUER","language":"LANGUE","welcome":"CONQUIERS TON SOMMET","hint":"1. Fais glisser ton doigt pour déplacer la faucille.\n2. Accroche-toi à un rebord.\n3. Pousse et vise le prochain anneau lumineux.","push":"Bloqué. Continue à glisser pour te repousser.","grip":"Accroché ! Continue à bouger la faucille pour grimper.","hazard":"Obstacle dangereux ! Contourne-le avec la faucille.","fall":"Chute ! Retour au départ.","win":"SOMMET ATTEINT !\nRecord : %d m"}
 }
 
 func _ready() -> void:
@@ -147,6 +147,7 @@ func _build_world() -> void:
         var point: Vector2 = ROUTE_LEDGE_POSITIONS[i]
         var tilt := -0.035 if i % 2 == 0 else 0.035
         _add_platform(Vector3(point.x, point.y, 0.0), LEDGE_SIZE, ledge_colors[i % ledge_colors.size()], tilt)
+        _add_route_beacon(Vector3(point.x, point.y + 1.05, 0.75), i)
 
     _build_climbable_rock_holds()
 
@@ -668,6 +669,7 @@ func _build_shadow_level_course() -> void:
         var x := -0.9 if i % 2 == 0 else 0.9
         var y := 25.50 + float(i) * 1.85
         _add_platform(Vector3(x, y, 0.0), Vector3(3.25, 0.66, 2.35), shadow_ledge, -0.025 if i % 2 == 0 else 0.025)
+        _add_route_beacon(Vector3(x, y + 1.0, 0.75), i + 12)
 
         var hold := StaticBody3D.new()
         hold.name = "ShadowClimbHold_%02d" % i
@@ -926,6 +928,39 @@ func _build_atmosphere() -> void:
     dust.process_material = process
     add_child(dust)
 
+
+
+func _add_route_beacon(pos: Vector3, index: int) -> void:
+    # Warm glowing rings mark safe footholds so the next landing is obvious.
+    var beacon := Node3D.new()
+    beacon.name = "RouteBeacon_%02d" % index
+    beacon.position = pos
+    add_child(beacon)
+
+    var ring := MeshInstance3D.new()
+    var ring_mesh := TorusMesh.new()
+    ring_mesh.inner_radius = 0.22
+    ring_mesh.outer_radius = 0.31
+    ring_mesh.rings = 12
+    ring_mesh.ring_segments = 8
+    ring.mesh = ring_mesh
+    ring.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+    var glow := StandardMaterial3D.new()
+    glow.albedo_color = Color(0.35, 0.95, 0.78)
+    glow.emission_enabled = true
+    glow.emission = Color(0.12, 0.9, 0.68)
+    glow.emission_energy_multiplier = 1.8
+    glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+    ring.material_override = glow
+    beacon.add_child(ring)
+
+    var core := MeshInstance3D.new()
+    var core_mesh := SphereMesh.new()
+    core_mesh.radius = 0.075
+    core_mesh.height = 0.15
+    core.mesh = core_mesh
+    core.material_override = glow
+    beacon.add_child(core)
 
 func _add_platform(pos: Vector3, size: Vector3, color: Color, tilt := 0.0) -> void:
     var body := StaticBody3D.new()
@@ -1247,6 +1282,9 @@ func _apply_language() -> void:
             c.text = _t("continue")
         if w:
             w.text = _t("welcome")
+        var how := start_overlay.get_node_or_null("CenterCard/Content/HowToPlayLabel") as Label
+        if how:
+            how.text = _t("hint")
 
 func _build_start_flow() -> void:
     var hud := get_node("GameHUD") as CanvasLayer
@@ -1315,8 +1353,8 @@ func _build_start_flow() -> void:
     card.anchor_bottom = 0.5
     card.offset_left = -245
     card.offset_right = 245
-    card.offset_top = -145
-    card.offset_bottom = 185
+    card.offset_top = -190
+    card.offset_bottom = 235
     card.add_theme_stylebox_override("panel", _hud_panel_style(Color(0.025, 0.045, 0.065, 0.96)))
     start_overlay.add_child(card)
     var content := VBoxContainer.new()
@@ -1336,6 +1374,14 @@ func _build_start_flow() -> void:
     welcome.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     welcome.add_theme_font_size_override("font_size", 17)
     content.add_child(welcome)
+    var how_to_play := Label.new()
+    how_to_play.name = "HowToPlayLabel"
+    how_to_play.text = _t("hint")
+    how_to_play.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    how_to_play.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+    how_to_play.add_theme_font_size_override("font_size", 15)
+    how_to_play.add_theme_color_override("font_color", Color(0.82, 0.89, 0.91))
+    content.add_child(how_to_play)
     _add_language_selector(content)
     var go := Button.new()
     go.name = "ContinueButton"
