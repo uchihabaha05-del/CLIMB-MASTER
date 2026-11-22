@@ -12,6 +12,10 @@ func _run() -> void:
     var core := CORE.new()
     world.add_child(core)
     await process_frame
+    _assert(core.impact_player != null and core.impact_player.stream is AudioStreamWAV,
+        "Impact feedback must use a generated WAV stream without external assets")
+    _assert((core.impact_player.stream as AudioStreamWAV).data.size() > 0,
+        "Generated impact sound must contain PCM samples")
     core.add_static_box(Vector2(0.0, 2.0), Vector2(30.0, 0.5), 0.0, 1.0, 0.0)
     var wall := core.add_static_box(Vector2(2.0, -0.2), Vector2(0.6, 8.0), 0.0, 0.9, 0.0)
     core.configure_start(Vector2(0.0, -0.1))
