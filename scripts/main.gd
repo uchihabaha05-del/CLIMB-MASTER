@@ -6,6 +6,14 @@ var camera: Camera3D
 var height_label: Label
 var hud_title_label: Label
 var status_label: Label
+var left_joystick: Panel
+var right_joystick: Panel
+var left_joystick_knob: Panel
+var right_joystick_knob: Panel
+var left_stick_vector := Vector2.ZERO
+var right_stick_vector := Vector2.ZERO
+var left_stick_touch := -1
+var right_stick_touch := -1
 var restart_button: Button
 var pause_button: Button
 const ROUTE_LEDGE_POSITIONS := [
@@ -1116,6 +1124,12 @@ func _build_hud() -> void:
     status_label.add_theme_color_override("font_color", Color(0.88, 0.93, 0.92))
     hint_panel.add_child(status_label)
 
+    # Twin translucent virtual joysticks: movement on the left, scythe aiming on the right.
+    left_joystick = _make_virtual_joystick(hud, false)
+    right_joystick = _make_virtual_joystick(hud, true)
+    left_joystick.gui_input.connect(_on_left_joystick_input)
+    right_joystick.gui_input.connect(_on_right_joystick_input)
+
     restart_button = Button.new()
     restart_button.text = _t("restart")
     restart_button.anchor_left = 0.5
@@ -1198,9 +1212,123 @@ func _build_hud() -> void:
     _build_win_overlay(hud)
     _add_language_selector(pause_content)
     # Touches that start on these controls must not swing the scythe.
-    player.ui_blockers = [pause_button, reset_button, restart_button, win_overlay, pause_overlay]
+    player.ui_blockers = [pause_button, reset_button, restart_button, win_overlay, pause_overlay, left_joystick, right_joystick]
 
 
+
+func _make_virtual_joystick(parent: Control, on_right: bool) -> Panel:
+    var base := Panel.new()
+    base.name = "RightVirtualJoystick" if on_right else "LeftVirtualJoystick"
+    base.anchor_left = 1.0 if on_right else 0.0
+    base.anchor_right = 1.0 if on_right else 0.0
+    base.anchor_top = 1.0
+    base.anchor_bottom = 1.0
+    base.offset_left = -202.0 if on_right else 32.0
+    base.offset_right = -32.0 if on_right else 202.0
+    base.offset_top = -218.0
+    base.offset_bottom = -48.0
+    base.mouse_filter = Control.MOUSE_FILTER_STOP
+    var base_style := StyleBoxFlat.new()
+    base_style.bg_color = Color(0.48, 0.82, 0.84, 0.16)
+    base_style.border_color = Color(0.70, 0.94, 0.92, 0.42)
+    base_style.set_border_width_all(2)
+    base_style.set_corner_radius_all(100)
+    base.add_theme_stylebox_override("panel", base_style)
+    parent.add_child(base)
+
+    var knob := Panel.new()
+    knob.name = "Knob"
+    knob.set_anchors_preset(Control.PRESET_CENTER)
+    knob.offset_left = -31
+    knob.offset_right = 31
+    knob.offset_top = -31
+    knob.offset_bottom = 31
+    knob.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    var knob_style := StyleBoxFlat.new()
+    knob_style.bg_color = Color(0.76, 0.96, 0.94, 0.34)
+    knob_style.border_color = Color(0.88, 1.0, 0.98, 0.58)
+    knob_style.set_border_width_all(2)
+    knob_style.set_corner_radius_all(40)
+    knob.add_theme_stylebox_override("panel", knob_style)
+    base.add_child(knob)
+    if on_right:
+        right_joystick_knob = knob
+    else:
+        left_joystick_knob = knob
+    return base
+
+func _update_stick_knob(base: Panel, knob: Panel, local_pos: Vector2) -> Vector2:
+    var center := base.size * 0.5
+    var radius := minf(base.size.x, base.size.y) * 0.34
+    var offset := local_pos - center
+    if offset.length() > radius:
+        offset = offset.normalized() * radius
+    knob.position = center + offset - knob.size * 0.5
+    return offset / maxf(radius, 1.0)
+
+func _reset_stick_knob(base: Panel, knob: Panel) -> void:
+    knob.position = (base.size - knob.size) * 0.5
+
+func _on_left_joystick_input(event: InputEvent) -> void:
+    if event is InputEventScreenTouch:
+        if event.pressed:
+            left_stick_touch = event.index
+            left_stick_vector = _update_stick_knob(left_joystick, left_joystick_knob, event.position)
+        elif event.index == left_stick_touch:
+            left_stick_touch = -1
+            left_stick_vector = Vector2.ZERO
+            _reset_stick_knob(left_joystick, left_joystick_knob)
+    elif event is InputEventScreenDrag and event.index == left_stick_touch:
+        left_stick_vector = _update_stick_knob(left_joystick, left_joystick_knob, event.position)
+    elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+        if event.pressed:
+            left_stick_touch = -2
+            left_stick_vector = _update_stick_knob(left_joystick, left_joystick_knob, event.position)
+        elif left_stick_touch == -2:
+            left_stick_touch = -1
+            left_stick_vector = Vector2.ZERO
+            _reset_stick_knob(left_joystick, left_joystick_knob)
+    elif event is InputEventMouseMotion and left_stick_touch == -2:
+        left_stick_vector = _update_stick_knob(left_joystick, left_joystick_knob, event.position)
+    if event is InputEventScreenTouch or event is InputEventScreenDrag or event is InputEventMouseButton or event is InputEventMouseMotion:
+        left_joystick.accept_event()
+
+func _on_right_joystick_input(event: InputEvent) -> void:
+    if event is InputEventScreenTouch:
+        if event.pressed:
+            right_stick_touch = event.index
+            right_stick_vector = _update_stick_knob(right_joystick, right_joystick_knob, event.position)
+        elif event.index == right_stick_touch:
+            right_stick_touch = -1
+            right_stick_vector = Vector2.ZERO
+            _reset_stick_knob(right_joystick, right_joystick_knob)
+    elif event is InputEventScreenDrag and event.index == right_stick_touch:
+        right_stick_vector = _update_stick_knob(right_joystick, right_joystick_knob, event.position)
+    elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+        if event.pressed:
+            right_stick_touch = -2
+            right_stick_vector = _update_stick_knob(right_joystick, right_joystick_knob, event.position)
+        elif right_stick_touch == -2:
+            right_stick_touch = -1
+            right_stick_vector = Vector2.ZERO
+            _reset_stick_knob(right_joystick, right_joystick_knob)
+    elif event is InputEventMouseMotion and right_stick_touch == -2:
+        right_stick_vector = _update_stick_knob(right_joystick, right_joystick_knob, event.position)
+    if event is InputEventScreenTouch or event is InputEventScreenDrag or event is InputEventMouseButton or event is InputEventMouseMotion:
+        right_joystick.accept_event()
+
+func _apply_virtual_sticks(delta: float) -> void:
+    if not is_instance_valid(player) or not is_instance_valid(player.physics_world):
+        return
+    var world := player.physics_world
+    if is_instance_valid(world.pot) and left_stick_vector.length() > 0.08:
+        world.pot.apply_central_force(Vector2(left_stick_vector.x, -left_stick_vector.y) * 82.0)
+    if right_stick_vector.length() > 0.12:
+        var aim := right_stick_vector.normalized()
+        player.target_angle = wrapf(atan2(-aim.y, aim.x) - PI * 0.5, -PI, PI)
+        if is_instance_valid(world.pot):
+            var shoulder := world.pot.global_position + Vector2(0.30, -0.72).rotated(world.pot.rotation)
+            world.set_target_world(shoulder + aim * ClimbPhysics2D.ARM_REACH)
 
 func _localized_feedback(source: String) -> String:
     if source.contains("Коснись"):
@@ -1447,6 +1575,7 @@ func _toggle_pause() -> void:
         pause_overlay.visible = get_tree().paused
 
 func _physics_process(delta: float) -> void:
+    _apply_virtual_sticks(delta)
     obstacle_clock += delta
     for i in range(moving_obstacles.size()):
         var obstacle := moving_obstacles[i]
