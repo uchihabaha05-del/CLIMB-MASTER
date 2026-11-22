@@ -29,9 +29,40 @@ var target_angle := DEFAULT_TARGET_ANGLE
 var target_world := Vector2.ZERO
 var initialized := false
 var last_contact := false
+var impact_player: AudioStreamPlayer
+var impact_cooldown := 0.0
 
 func _ready() -> void:
     _build_bodies()
+    _build_impact_audio()
+
+func _build_impact_audio() -> void:
+    # A short, synthesized metal-on-stone strike; no external audio asset required.
+    var sample_rate := 22050
+    var duration := 0.20
+    var sample_count := int(sample_rate * duration)
+    var samples := PackedByteArray()
+    samples.resize(sample_count * 2)
+    var phase := 0.0
+    for i in range(sample_count):
+        var t := float(i) / float(sample_rate)
+        var envelope := exp(-t * 24.0)
+        var frequency := 185.0 + 520.0 * exp(-t * 13.0)
+        phase += TAU * frequency / float(sample_rate)
+        var metallic := sin(phase) * 0.72 + sin(phase * 2.71) * 0.20
+        var grit := sin(float(i) * 12.9898) * 0.08
+        var value := int(clampf((metallic + grit) * envelope, -1.0, 1.0) * 15000.0)
+        samples.encode_s16(i * 2, value)
+    var sound := AudioStreamWAV.new()
+    sound.format = AudioStreamWAV.FORMAT_16_BITS
+    sound.mix_rate = sample_rate
+    sound.stereo = false
+    sound.data = samples
+    impact_player = AudioStreamPlayer.new()
+    impact_player.name = "ClimbImpactAudio"
+    impact_player.stream = sound
+    impact_player.volume_db = -9.0
+    add_child(impact_player)
 
 func _build_bodies() -> void:
     pot = RigidBody2D.new()
@@ -96,6 +127,9 @@ func _build_bodies() -> void:
 func _on_hammer_body_entered(body: Node) -> void:
     if body != pot:
         last_contact = true
+        if impact_cooldown <= 0.0 and is_instance_valid(impact_player):
+            impact_player.play()
+            impact_cooldown = 0.14
 
 func _on_hammer_body_exited(_body: Node) -> void:
     last_contact = false
@@ -159,7 +193,8 @@ func set_target_world(world_point: Vector2) -> void:
     if aim.length_squared() > 0.0001:
         target_angle = aim.angle() + PI * 0.5
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
+    impact_cooldown = maxf(0.0, impact_cooldown - delta)
     if not initialized:
         return
     shoulder_anchor.global_position = pot.global_position + Vector2(0.30, -0.72).rotated(pot.rotation)
